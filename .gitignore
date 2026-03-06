@@ -1,0 +1,12 @@
+node_modules/
+dist/
+.DS_Store
+
+# OCR specification PDFs — available at:
+# GCSE J277: https://www.ocr.org.uk/Images/558027-specification-gcse-computer-science-j277.pdf
+# A Level H446: https://www.ocr.org.uk/images/170844-specification-accredited-a-level-gce-computer-science-h446.pdf
+*.pdf
+*.PDF
+
+# Vite
+*.local
