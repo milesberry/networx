@@ -59,6 +59,7 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
   const isHub = data.deviceType === 'hub'
   const isWap = data.deviceType === 'wap'
   const isFirewall = data.deviceType === 'firewall'
+  const isWeb = data.deviceType === 'web'
   const hasIp = !(isSwitch || isHub)
 
   const TABS = [
@@ -67,6 +68,7 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
     ...(isFirewall ? [{ id: 'security', label: 'Rules' }] : []),
     ...(isSwitch ? [{ id: 'advanced', label: 'MAC Table' }] : []),
     ...(isWap ? [{ id: 'advanced', label: 'Wireless' }] : []),
+    ...(isWeb ? [{ id: 'page', label: 'Page' }] : []),
   ] as { id: string; label: string }[]
 
   return (
@@ -236,6 +238,23 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
               </p>
             </div>
           </>
+        )}
+
+        {tab === 'page' && isWeb && (
+          <div className="flex flex-col gap-2">
+            <p className="text-xs text-gray-400">
+              Edit the HTML served by this web server. Use{' '}
+              <code className="bg-gray-100 px-1 rounded font-mono">curl {data.ip}</code>{' '}
+              from a terminal to fetch it.
+            </p>
+            <textarea
+              className="font-mono text-xs bg-gray-900 text-green-400 p-3 rounded-lg resize-none outline-none border border-gray-700 focus:border-green-500 transition-colors"
+              style={{ height: '280px' }}
+              value={data.pageContent ?? ''}
+              onChange={(e) => upd({ pageContent: e.target.value })}
+              spellCheck={false}
+            />
+          </div>
         )}
 
         {tab === 'security' && isFirewall && (

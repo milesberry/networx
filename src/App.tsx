@@ -12,7 +12,7 @@ import '@xyflow/react/dist/style.css'
 import {
   BookOpen, Cable, Wifi, Trash2, HelpCircle,
   ChevronRight, ChevronLeft, Save, LayoutGrid, Check, X as XIcon,
-  Upload,
+  Upload, Layers,
 } from 'lucide-react'
 
 import { useNetworkStore } from './store'
@@ -285,9 +285,11 @@ interface ToolbarProps {
   onShowInfo: () => void
   selectedNodeId: string | null
   infoOpen: boolean
+  showLayers: boolean
+  toggleLayers: () => void
 }
 
-function Toolbar({ connectionType, setConnectionType, onDeleteSelected, onShowInfo, selectedNodeId, infoOpen }: ToolbarProps) {
+function Toolbar({ connectionType, setConnectionType, onDeleteSelected, onShowInfo, selectedNodeId, infoOpen, showLayers, toggleLayers }: ToolbarProps) {
   return (
     <header className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 z-10 flex-shrink-0 shadow-sm">
       <span className="font-bold text-lg tracking-tight text-blue-600 mr-1">Networx</span>
@@ -333,6 +335,15 @@ function Toolbar({ connectionType, setConnectionType, onDeleteSelected, onShowIn
       )}
 
       <div className="ml-auto flex items-center gap-2">
+        <button
+          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+            showLayers ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' : 'text-gray-600 hover:bg-gray-50'
+          }`}
+          onClick={toggleLayers}
+          title="Show TCP/IP layer for each device"
+        >
+          <Layers size={14} /> Layers
+        </button>
         <button
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
             infoOpen ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
@@ -409,6 +420,7 @@ function AppInner() {
     addDevice, selectNode, deleteSelected,
     connectionType, setConnectionType,
     selectedNodeId, activePanel, setPanel,
+    showLayers, toggleLayers,
   } = useNetworkStore()
 
   const [infoOpen, setInfoOpen] = useState(false)
@@ -434,6 +446,8 @@ function AppInner() {
         onShowInfo={handleShowInfo}
         selectedNodeId={selectedNodeId}
         infoOpen={infoOpen}
+        showLayers={showLayers}
+        toggleLayers={toggleLayers}
       />
 
       <div className="flex flex-1 overflow-hidden relative">

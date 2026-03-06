@@ -345,17 +345,21 @@ function cmdCurl(args: string[], ctx: TermContext): Lines {
   const webNode = ctx.nodes.find((n) => n.data.deviceType === 'web')
   const localPath = webNode ? findPath(src.id, webNode.id, ctx.nodes, ctx.edges) : null
 
-  // If local web server is reachable and URL looks local, use it
-  if (localPath && !isHostname(hostname)) {
+  // Helper: render page content as terminal lines
+  function renderPage(node: typeof webNode): Lines {
+    const content = (node?.data.pageContent || '').trim() || '<h1>Welcome</h1>'
+    const bytes = content.length
     return [
       out(`  % Total    % Received % Xferd  Average Speed   Time`),
-      out(`100   256  100   256    0     0   5120      0 --:--:-- --:--:--`),
+      out(`100  ${bytes.toString().padStart(4)}  100  ${bytes.toString().padStart(4)}    0     0   5120      0 --:--:-- --:--:--`),
       out(''),
-      out('<!DOCTYPE html>'),
-      out('<html><head><title>NetworX Web Server</title></head>'),
-      out('<body><h1>Welcome to the NetworX Web Server</h1>'),
-      out('<p>HTTP/1.1 200 OK</p></body></html>'),
+      ...content.split('\n').map((line) => out(line)),
     ]
+  }
+
+  // If local web server is reachable and URL looks local (IP address), use it
+  if (localPath && !isHostname(hostname)) {
+    return renderPage(webNode)
   }
 
   // External URL — need internet access
@@ -368,15 +372,7 @@ function cmdCurl(args: string[], ctx: TermContext): Lines {
 
   // If local web server exists and is reachable, prefer it for local-looking hosts
   if (localPath) {
-    return [
-      out(`  % Total    % Received % Xferd  Average Speed   Time`),
-      out(`100   256  100   256    0     0   5120      0 --:--:-- --:--:--`),
-      out(''),
-      out('<!DOCTYPE html>'),
-      out('<html><head><title>NetworX Web Server</title></head>'),
-      out('<body><h1>Welcome to the NetworX Web Server</h1>'),
-      out('<p>HTTP/1.1 200 OK</p></body></html>'),
-    ]
+    return renderPage(webNode)
   }
 
   return [

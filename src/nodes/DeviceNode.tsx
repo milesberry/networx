@@ -29,8 +29,22 @@ const HANDLE_STYLE = {
   border: '2px solid #d1d5db',
 }
 
+const LAYER_INFO: Record<string, { label: string; color: string; bg: string }> = {
+  pc:       { label: 'L4–7 App',  color: '#1d4ed8', bg: '#dbeafe' },
+  laptop:   { label: 'L4–7 App',  color: '#1d4ed8', bg: '#dbeafe' },
+  server:   { label: 'L4–7 App',  color: '#1d4ed8', bg: '#dbeafe' },
+  dns:      { label: 'L4–7 App',  color: '#1d4ed8', bg: '#dbeafe' },
+  web:      { label: 'L4–7 App',  color: '#1d4ed8', bg: '#dbeafe' },
+  router:   { label: 'L3 Network',color: '#dc2626', bg: '#fee2e2' },
+  firewall: { label: 'L3 Network',color: '#dc2626', bg: '#fee2e2' },
+  wap:      { label: 'L2/L3',     color: '#d97706', bg: '#fef3c7' },
+  switch:   { label: 'L2 Data',   color: '#d97706', bg: '#fef3c7' },
+  hub:      { label: 'L1 Phys',   color: '#6b7280', bg: '#f3f4f6' },
+  cloud:    { label: 'L1–7',      color: '#0369a1', bg: '#e0f2fe' },
+}
+
 export default function DeviceNode({ id, data, selected }: NodeProps<NetNode>) {
-  const { setPanel, selectNode } = useNetworkStore()
+  const { setPanel, selectNode, showLayers } = useNetworkStore()
   const cfg = DEVICE_CONFIG[data.deviceType] ?? DEVICE_CONFIG.pc
   const Icon = cfg.icon
   const hasTerminal = ['pc', 'laptop', 'server', 'dns', 'web'].includes(data.deviceType)
@@ -98,6 +112,17 @@ export default function DeviceNode({ id, data, selected }: NodeProps<NetNode>) {
         ) : (
           data.ip && <span className="text-xs text-gray-500 font-mono">{data.ip}</span>
         )}
+
+        {/* TCP/IP layer badge */}
+        {showLayers && (() => {
+          const l = LAYER_INFO[data.deviceType]
+          return l ? (
+            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full leading-none"
+              style={{ background: l.bg, color: l.color, border: `1px solid ${l.color}44` }}>
+              {l.label}
+            </span>
+          ) : null
+        })()}
 
         {/* Action buttons */}
         {!isCloud && (

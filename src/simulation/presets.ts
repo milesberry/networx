@@ -28,6 +28,9 @@ function node(
       wpaKey: 'password123',
       band: '2.4GHz',
       rules: [],
+      pageContent: deviceType === 'web'
+        ? `<!DOCTYPE html>\n<html>\n<head>\n  <title>${label}</title>\n</head>\n<body>\n  <h1>Welcome to ${label}</h1>\n  <p>This page is served from <strong>${ip}</strong>.</p>\n  <p>Edit this content in the Configure panel &rarr; Page tab.</p>\n</body>\n</html>`
+        : '',
       termHistory: [],
       notes: '',
       ...extra,

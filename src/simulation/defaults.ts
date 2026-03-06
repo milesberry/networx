@@ -43,6 +43,7 @@ export function makeDefaultData(type: DeviceType, id: string): NodeData {
     wpaKey: 'password123',
     band: '2.4GHz',
     rules: [],
+    pageContent: '',
     termHistory: [],
     notes: '',
   }
@@ -78,6 +79,7 @@ export function makeDefaultData(type: DeviceType, id: string): NodeData {
     case 'web':
       base.ip = nextIp()
       base.label = 'Web Server'
+      base.pageContent = `<!DOCTYPE html>\n<html>\n<head>\n  <title>My Web Server</title>\n</head>\n<body>\n  <h1>Welcome to My Web Server</h1>\n  <p>This page is being served from the web server node.</p>\n  <p>Edit this content in the Configure panel &rarr; Page tab.</p>\n</body>\n</html>`
       break
     case 'cloud':
       base.ip = '0.0.0.0'

@@ -27,6 +27,7 @@ interface NetworkStore {
   selectedNodeId: string | null
   activePanel: PanelType
   connectionType: 'wired' | 'wireless'
+  showLayers: boolean
 
   // ReactFlow handlers
   onNodesChange: (changes: NodeChange<NetNode>[]) => void
@@ -44,6 +45,9 @@ interface NetworkStore {
 
   // Connection type
   setConnectionType: (t: 'wired' | 'wireless') => void
+
+  // Layer visibility
+  toggleLayers: () => void
 
   // Terminal
   appendTermLine: (nodeId: string, line: TerminalLine) => void
@@ -74,6 +78,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
   selectedNodeId: null,
   activePanel: null,
   connectionType: 'wired',
+  showLayers: false,
 
   onNodesChange: (changes) =>
     set((s) => ({ nodes: applyNodeChanges(changes, s.nodes) })),
@@ -132,6 +137,8 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
   setPanel: (panel) => set({ activePanel: panel }),
 
   setConnectionType: (t) => set({ connectionType: t }),
+
+  toggleLayers: () => set((s) => ({ showLayers: !s.showLayers })),
 
   appendTermLine: (nodeId, line) =>
     set((s) => ({

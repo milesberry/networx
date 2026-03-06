@@ -60,6 +60,8 @@ export interface NodeData extends Record<string, unknown> {
   band: '2.4GHz' | '5GHz'
   // Firewall
   rules: FirewallRule[]
+  // Web server hosted page
+  pageContent: string
   // Terminal history (pc, laptop, server)
   termHistory: TerminalLine[]
   // Extra info
