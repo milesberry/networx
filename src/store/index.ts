@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react'
 import type { NodeChange, EdgeChange, Connection } from '@xyflow/react'
-import type { NetNode, NetEdge, NodeData, PanelType, RouteEntry, MacEntry, FirewallRule, TerminalLine } from '../types'
+import type { NetNode, NetEdge, NodeData, PanelType, RouteEntry, MacEntry, FirewallRule, TerminalLine, PacketAnim } from '../types'
 import { makeDefaultData } from '../simulation/defaults'
 import type { Preset } from '../simulation/presets'
 
@@ -64,6 +64,10 @@ interface NetworkStore {
   addRule: (nodeId: string, rule: FirewallRule) => void
   removeRule: (nodeId: string, id: string) => void
 
+  // Packet animations
+  activePackets: PacketAnim[]
+  dispatchPackets: (packets: PacketAnim[]) => void
+
   // Persistence & presets
   saveToStorage: () => void
   loadPreset: (preset: Preset) => void
@@ -79,6 +83,7 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
   activePanel: null,
   connectionType: 'wired',
   showLayers: false,
+  activePackets: [],
 
   onNodesChange: (changes) =>
     set((s) => ({ nodes: applyNodeChanges(changes, s.nodes) })),
@@ -200,6 +205,18 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
           : n,
       ),
     })),
+
+  dispatchPackets: (packets) => {
+    // Stagger each packet's appearance via setTimeout so animateMotion starts at t=0
+    packets.forEach((packet) => {
+      setTimeout(() => {
+        set((s) => ({ activePackets: [...s.activePackets, packet] }))
+        setTimeout(() => {
+          set((s) => ({ activePackets: s.activePackets.filter((p) => p.id !== packet.id) }))
+        }, packet.durationMs + 150)
+      }, packet.delayMs)
+    })
+  },
 
   saveToStorage: () => {
     const { nodes, edges } = get()

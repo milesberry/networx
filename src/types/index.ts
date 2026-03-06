@@ -72,3 +72,13 @@ export type NetNode = Node<NodeData>
 export type NetEdge = Edge
 
 export type PanelType = 'config' | 'terminal' | 'info' | null
+
+export interface PacketAnim {
+  id: string
+  edgeId: string
+  protocol: 'ICMP' | 'HTTP' | 'DNS' | 'TCP' | 'UDP'
+  label: string
+  delayMs: number
+  durationMs: number
+  reverse?: boolean
+}

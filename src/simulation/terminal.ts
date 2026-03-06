@@ -1,4 +1,4 @@
-import type { NetNode, NetEdge, TerminalLine, MacEntry } from '../types'
+import type { NetNode, NetEdge, TerminalLine, MacEntry, PacketAnim } from '../types'
 import { findPath, nodeByIp, nodeById, simulatePingRtt, subnetToCidr } from './network'
 
 export interface TermContext {
@@ -6,6 +6,50 @@ export interface TermContext {
   nodes: NetNode[]
   edges: NetEdge[]
   learnMac?: (switchId: string, entry: MacEntry) => void
+  dispatchPackets?: (packets: PacketAnim[]) => void
+}
+
+// ── Packet animation helpers ──────────────────────────────────────────────────
+
+const HOP_MS = 500
+
+function edgesOnPath(nodeIds: string[], edges: NetEdge[]): string[] {
+  return nodeIds.slice(0, -1).flatMap((nid, i) => {
+    const next = nodeIds[i + 1]
+    const e = edges.find(
+      (e) => (e.source === nid && e.target === next) || (e.source === next && e.target === nid),
+    )
+    return e ? [e.id] : []
+  })
+}
+
+function makePackets(
+  nodeIds: string[],
+  allEdges: NetEdge[],
+  protocol: PacketAnim['protocol'],
+  label: string,
+  withReply = false,
+): PacketAnim[] {
+  const eids = edgesOnPath(nodeIds, allEdges)
+  const N = eids.length
+  const ts = Date.now()
+  const forward: PacketAnim[] = eids.map((edgeId, i) => ({
+    id: `pkt-${ts}-f${i}`,
+    edgeId, protocol, label,
+    delayMs: i * HOP_MS,
+    durationMs: HOP_MS,
+  }))
+  if (!withReply) return forward
+  const replyLabel = protocol === 'ICMP' ? 'reply' : `${label} ↩`
+  const reply: PacketAnim[] = [...eids].reverse().map((edgeId, i) => ({
+    id: `pkt-${ts}-r${i}`,
+    edgeId, protocol,
+    label: replyLabel,
+    delayMs: (N + i) * HOP_MS,
+    durationMs: HOP_MS,
+    reverse: true,
+  }))
+  return [...forward, ...reply]
 }
 
 // When a packet path traverses a switch, learn MAC→port mappings
@@ -156,6 +200,7 @@ function cmdPing(args: string[], ctx: TermContext): Lines {
   if (!path) return [err(`ping: sendmsg: No route to host`)]
 
   populateMacTables(path, ctx)
+  ctx.dispatchPackets?.(makePackets(path, ctx.edges, 'ICMP', 'ICMP', true))
 
   const hops = path.length - 1
   const lines: Lines = [out(`PING ${target}: 56 data bytes`)]
@@ -226,6 +271,7 @@ function cmdTraceroute(args: string[], ctx: TermContext): Lines {
   if (!path) return [err(`traceroute to ${target}: no route to host`)]
 
   populateMacTables(path, ctx)
+  ctx.dispatchPackets?.(makePackets(path, ctx.edges, 'ICMP', 'ICMP'))
 
   const lines: Lines = [out(`traceroute to ${target} (${target}), 30 hops max, 60 byte packets`)]
   path.slice(1).forEach((nodeId, i) => {
@@ -272,8 +318,11 @@ function cmdNslookup(args: string[], ctx: TermContext): Lines {
   const dnsNode   = ctx.nodes.find((n) => n.data.deviceType === 'dns')
   const cloudNode = ctx.nodes.find((n) => n.data.deviceType === 'cloud')
 
-  const canReachDns   = dnsNode   && findPath(src.id, dnsNode.id,   ctx.nodes, ctx.edges)
-  const canReachCloud = cloudNode && findPath(src.id, cloudNode.id, ctx.nodes, ctx.edges)
+  const dnsPath       = dnsNode   ? findPath(src.id, dnsNode.id,   ctx.nodes, ctx.edges) : null
+  const canReachDns   = !!dnsPath
+  const canReachCloud = !!(cloudNode && findPath(src.id, cloudNode.id, ctx.nodes, ctx.edges))
+
+  if (dnsPath) ctx.dispatchPackets?.(makePackets(dnsPath, ctx.edges, 'DNS', 'DNS', true))
 
   if (!canReachDns && !canReachCloud) {
     return [
@@ -359,6 +408,7 @@ function cmdCurl(args: string[], ctx: TermContext): Lines {
 
   // If local web server is reachable and URL looks local (IP address), use it
   if (localPath && !isHostname(hostname)) {
+    ctx.dispatchPackets?.(makePackets(localPath, ctx.edges, 'HTTP', 'HTTP', true))
     return renderPage(webNode)
   }
 
@@ -372,6 +422,7 @@ function cmdCurl(args: string[], ctx: TermContext): Lines {
 
   // If local web server exists and is reachable, prefer it for local-looking hosts
   if (localPath) {
+    ctx.dispatchPackets?.(makePackets(localPath, ctx.edges, 'HTTP', 'HTTP', true))
     return renderPage(webNode)
   }
 
