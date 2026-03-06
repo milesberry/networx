@@ -19,7 +19,7 @@ function node(
       deviceType,
       ip,
       subnet: ['switch', 'hub', 'cloud'].includes(deviceType) ? '' : '255.255.255.0',
-      gateway: ['switch', 'hub', 'cloud', 'router'].includes(deviceType) ? '' : '192.168.1.1',
+      gateway: ['switch', 'hub', 'cloud', 'router'].includes(deviceType) ? '' : ip.replace(/\.\d+$/, '.1'),
       mac: mac(`aa:bb:cc:dd:${id.slice(-2).padStart(2, '0')}:01`),
       isOn: true,
       routingTable: [],
