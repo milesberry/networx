@@ -2,7 +2,7 @@
 
 A browser-based network emulator for teaching computer networking concepts at GCSE and A Level (OCR specifications J277 and H446).
 
-**[Live demo →](https://milesberry.github.io/networx/)**
+**[Live demo →](https://milesberry.net/networx)**
 
 ## What it does
 

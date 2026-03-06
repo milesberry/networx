@@ -1,6 +1,6 @@
 # Colophon
 
-Networx was conceived and built during a single conversation with [Claude Sonnet 4.6](https://www.anthropic.com/claude) (Anthropic) in March 2025, using [Claude Code](https://claude.ai/code) as the agentic coding environment.
+Networx was conceived and built during a single conversation between Prof Miles Berry and [Claude Sonnet 4.6](https://www.anthropic.com/claude) (Anthropic) in March 2025, using [Claude Code](https://claude.ai/code) as the agentic coding environment.
 
 ## Origin
 
@@ -34,7 +34,7 @@ Each change was verified by Claude taking screenshots of the running preview ser
 
 ## Human contributions
 
-The human in this conversation:
+Miles:
 - Defined the requirements and curriculum context
 - Chose React Flow as the rendering library
 - Provided the OCR specifications for context
