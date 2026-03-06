@@ -55,10 +55,11 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
   }
 
   const isRouter = data.deviceType === 'router'
-  const isSwitch = data.deviceType === 'switch' || data.deviceType === 'hub'
+  const isSwitch = data.deviceType === 'switch'
+  const isHub = data.deviceType === 'hub'
   const isWap = data.deviceType === 'wap'
   const isFirewall = data.deviceType === 'firewall'
-  const hasIp = !isSwitch
+  const hasIp = !(isSwitch || isHub)
 
   const TABS = [
     { id: 'basic', label: 'Basic' },

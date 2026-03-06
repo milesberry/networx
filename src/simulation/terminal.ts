@@ -13,7 +13,7 @@ function populateMacTables(path: string[], ctx: TermContext): void {
   if (!ctx.learnMac) return
   for (let i = 0; i < path.length; i++) {
     const node = nodeById(path[i], ctx.nodes)
-    if (!node || node.data.deviceType !== 'switch') continue
+    if (!node || node.data.deviceType !== 'switch') continue  // hubs don't learn MACs
 
     // Assign port numbers by sorting the switch's connected edges
     const switchEdges = ctx.edges
