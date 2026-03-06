@@ -31,7 +31,7 @@ function Field({ label, value, onChange, placeholder = '', mono = false }: {
 export default function ConfigPanel({ nodeId, onClose }: Props) {
   const { nodes, updateNodeData, addRoute, removeRoute, addRule, removeRule } = useNetworkStore()
   const node = nodes.find((n) => n.id === nodeId)
-  const [tab, setTab] = useState<'basic' | 'advanced' | 'security'>('basic')
+  const [tab, setTab] = useState<'basic' | 'advanced' | 'security' | 'page'>('basic')
 
   if (!node) return null
 
