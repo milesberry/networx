@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function Terminal({ nodeId, onClose }: Props) {
-  const { nodes, edges, appendTermLine, clearTerm, learnMac, dispatchPackets } = useNetworkStore()
+  const { nodes, edges, appendTermLine, clearTerm, learnMac, dispatchPackets, level } = useNetworkStore()
   const node = nodes.find((n) => n.id === nodeId)
   const [input, setInput] = useState('')
   const [histIdx, setHistIdx] = useState(-1)
@@ -36,7 +36,7 @@ export default function Terminal({ nodeId, onClose }: Props) {
     // Echo the input
     appendTermLine(nodeId, { type: 'input', text: `$ ${raw}` })
 
-    const result = runCommand(raw, { selfId: nodeId, nodes, edges, learnMac, dispatchPackets })
+    const result = runCommand(raw, { selfId: nodeId, nodes, edges, level, learnMac, dispatchPackets })
 
     // Check for CLEAR signal
     if (result.length === 1 && result[0]?.text === '\x1bCLEAR') {

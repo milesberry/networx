@@ -1,5 +1,5 @@
 import { Monitor, Server, Router, Zap, Wifi, Shield, Globe, Laptop, HardDrive, Cloud } from 'lucide-react'
-import type { DeviceType } from '../types'
+import type { DeviceType, Level } from '../types'
 
 interface DeviceDef {
   type: DeviceType
@@ -8,27 +8,34 @@ interface DeviceDef {
   color: string
   bg: string
   description: string
+  minLevel: Level
 }
 
+// minLevel = the lowest level at which this device is available
 const DEVICES: DeviceDef[] = [
-  { type: 'pc',       label: 'PC',           icon: Monitor,   color: '#2563eb', bg: '#dbeafe', description: 'Workstation with terminal' },
-  { type: 'laptop',   label: 'Laptop',       icon: Laptop,    color: '#7c3aed', bg: '#ede9fe', description: 'Portable workstation' },
-  { type: 'server',   label: 'Server',       icon: Server,    color: '#059669', bg: '#d1fae5', description: 'General-purpose server' },
-  { type: 'router',   label: 'Router',       icon: Router,    color: '#dc2626', bg: '#fee2e2', description: 'Routes between networks' },
-  { type: 'switch',   label: 'Switch',       icon: HardDrive, color: '#d97706', bg: '#fef3c7', description: 'Connects LAN devices' },
-  { type: 'hub',      label: 'Hub',          icon: Zap,       color: '#6b7280', bg: '#f3f4f6', description: 'Broadcasts to all ports' },
-  { type: 'wap',      label: 'Access Point', icon: Wifi,      color: '#0891b2', bg: '#cffafe', description: 'Wireless access point' },
-  { type: 'firewall', label: 'Firewall',     icon: Shield,    color: '#9333ea', bg: '#f3e8ff', description: 'Filters network traffic' },
-  { type: 'dns',      label: 'DNS Server',   icon: Globe,     color: '#0284c7', bg: '#e0f2fe', description: 'Resolves domain names' },
-  { type: 'web',      label: 'Web Server',   icon: Globe,     color: '#16a34a', bg: '#dcfce7', description: 'Serves HTTP pages' },
-  { type: 'cloud',    label: 'Internet',     icon: Cloud,     color: '#0369a1', bg: '#f0f9ff', description: 'WAN / ISP cloud' },
+  { type: 'pc',       label: 'PC',           icon: Monitor,   color: '#2563eb', bg: '#dbeafe', description: 'Workstation with terminal',  minLevel: 'ks3' },
+  { type: 'laptop',   label: 'Laptop',       icon: Laptop,    color: '#7c3aed', bg: '#ede9fe', description: 'Portable workstation',       minLevel: 'ks3' },
+  { type: 'server',   label: 'Server',       icon: Server,    color: '#059669', bg: '#d1fae5', description: 'General-purpose server',     minLevel: 'ks3' },
+  { type: 'router',   label: 'Router',       icon: Router,    color: '#dc2626', bg: '#fee2e2', description: 'Routes between networks',    minLevel: 'ks3' },
+  { type: 'switch',   label: 'Switch',       icon: HardDrive, color: '#d97706', bg: '#fef3c7', description: 'Connects LAN devices',       minLevel: 'ks3' },
+  { type: 'wap',      label: 'Access Point', icon: Wifi,      color: '#0891b2', bg: '#cffafe', description: 'Wireless access point',      minLevel: 'ks3' },
+  { type: 'firewall', label: 'Firewall',     icon: Shield,    color: '#9333ea', bg: '#f3e8ff', description: 'Filters network traffic',    minLevel: 'ks4' },
+  { type: 'dns',      label: 'DNS Server',   icon: Globe,     color: '#0284c7', bg: '#e0f2fe', description: 'Resolves domain names',      minLevel: 'ks4' },
+  { type: 'web',      label: 'Web Server',   icon: Globe,     color: '#16a34a', bg: '#dcfce7', description: 'Serves HTTP pages',          minLevel: 'ks4' },
+  { type: 'cloud',    label: 'Internet',     icon: Cloud,     color: '#0369a1', bg: '#f0f9ff', description: 'WAN / ISP cloud',            minLevel: 'ks4' },
+  { type: 'hub',      label: 'Hub',          icon: Zap,       color: '#6b7280', bg: '#f3f4f6', description: 'Broadcasts to all ports',    minLevel: 'ks5' },
 ]
+
+const LEVEL_ORDER: Record<Level, number> = { ks3: 3, ks4: 4, ks5: 5 }
 
 interface Props {
   onAddDevice: (type: DeviceType) => void
+  level: Level
 }
 
-export default function DevicePalette({ onAddDevice }: Props) {
+export default function DevicePalette({ onAddDevice, level }: Props) {
+  const visible = DEVICES.filter((d) => LEVEL_ORDER[d.minLevel] <= LEVEL_ORDER[level])
+
   function handleDragStart(e: React.DragEvent, type: DeviceType) {
     e.dataTransfer.setData('application/networx-device', type)
     e.dataTransfer.effectAllowed = 'copy'
@@ -42,7 +49,7 @@ export default function DevicePalette({ onAddDevice }: Props) {
       </div>
 
       <div className="flex flex-col gap-0.5 p-2">
-        {DEVICES.map((dev) => {
+        {visible.map((dev) => {
           const Icon = dev.icon
           return (
             <div

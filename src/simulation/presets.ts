@@ -1,4 +1,4 @@
-import type { NetNode, NetEdge, NodeData, DeviceType } from '../types'
+import type { NetNode, NetEdge, NodeData, DeviceType, Level } from '../types'
 
 function mac(s: string): string { return s } // fixed MACs for presets
 
@@ -56,6 +56,7 @@ export interface Preset {
   id: string
   name: string
   description: string
+  level: Level
   nodes: NetNode[]
   edges: NetEdge[]
 }
@@ -66,6 +67,7 @@ const starLan: Preset = {
   id: 'star-lan',
   name: 'Star Topology (LAN)',
   description: 'Classic star topology: a central switch connecting four workstations. Good for exploring LAN basics, switch MAC tables, and ping.',
+  level: 'ks3',
   nodes: [
     node('sw1',  'switch', 'Switch',  '',              { x: 320, y: 240 }),
     node('pc1',  'pc',     'PC 1',    '192.168.1.11',  { x: 120, y: 80  }),
@@ -87,6 +89,7 @@ const homeNetwork: Preset = {
   id: 'home-network',
   name: 'Home Network',
   description: 'Typical home setup: ISP → Router (NAT) → Switch + WAP. Wired PCs on the switch, wireless laptop via access point.',
+  level: 'ks4',
   nodes: [
     node('cloud1',   'cloud',    'Internet',       '0.0.0.0',       { x: 20,  y: 230 },
       { notes: 'Represents your ISP and the public internet.' }),
@@ -120,6 +123,7 @@ const schoolNetwork: Preset = {
   id: 'school-network',
   name: 'School Network',
   description: 'School infrastructure: Internet → Firewall → Router → Core switch → servers + classroom switch + WAP. Demonstrates network segmentation and security.',
+  level: 'ks4',
   nodes: [
     node('cloud1',  'cloud',    'Internet',       '0.0.0.0',        { x: 20,  y: 330 }),
     node('fw1',     'firewall', 'Firewall',       '10.0.0.1',       { x: 200, y: 330 },
@@ -173,6 +177,7 @@ const clientServer: Preset = {
   id: 'client-server',
   name: 'Client-Server Model',
   description: 'A web server and DNS server on a LAN, with three client PCs. Try nslookup and curl from a PC terminal.',
+  level: 'ks4',
   nodes: [
     node('sw1',   'switch', 'Switch',      '',              { x: 320, y: 280 }),
     node('dns1',  'dns',    'DNS Server',  '192.168.1.53',  { x: 100, y: 100 },
@@ -202,6 +207,7 @@ const meshNetwork: Preset = {
   id: 'mesh-network',
   name: 'Mesh / WAN Topology',
   description: 'Three sites connected via routers with redundant paths — like the internet backbone. Shows how packets can take multiple routes.',
+  level: 'ks5',
   nodes: [
     node('cloud1',   'cloud',  'Internet',       '0.0.0.0',       { x: 320, y: 30  }),
     // Site A

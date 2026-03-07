@@ -1,5 +1,7 @@
 import type { Node, Edge } from '@xyflow/react'
 
+export type Level = 'ks3' | 'ks4' | 'ks5'
+
 export type DeviceType =
   | 'pc'
   | 'laptop'

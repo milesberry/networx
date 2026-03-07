@@ -12,10 +12,11 @@ import '@xyflow/react/dist/style.css'
 import {
   BookOpen, Cable, Wifi, Trash2, HelpCircle,
   ChevronRight, ChevronLeft, Save, LayoutGrid, Check, X as XIcon,
-  Upload, Layers,
+  Upload, Layers, GraduationCap,
 } from 'lucide-react'
 
 import { useNetworkStore } from './store'
+import type { Level } from './types'
 import DeviceNode from './nodes/DeviceNode'
 import DeletableEdge from './edges/DeletableEdge'
 import DevicePalette from './components/DevicePalette'
@@ -183,7 +184,12 @@ function PresetPicker() {
             >
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <div className="text-sm font-medium text-gray-800">{p.name}</div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-sm font-medium text-gray-800">{p.name}</span>
+                    <span className="text-xs font-semibold px-1.5 py-0.5 rounded bg-gray-100 text-gray-500 uppercase tracking-wide flex-shrink-0">
+                      {p.level}
+                    </span>
+                  </div>
                   <div className="text-xs text-gray-500 leading-tight mt-0.5">{p.description}</div>
                 </div>
                 {confirmId === p.id ? (
@@ -206,12 +212,12 @@ function PresetPicker() {
 // ─── Save / Import buttons ────────────────────────────────────────────────────
 
 function SaveButton() {
-  const { clearCanvas, loadPreset, nodes, edges } = useNetworkStore()
+  const { clearCanvas, loadPreset, nodes, edges, level } = useNetworkStore()
   const [flash, setFlash] = useState(false)
   const importRef = useRef<HTMLInputElement>(null)
 
   function handleSave() {
-    const json = JSON.stringify({ nodes, edges }, null, 2)
+    const json = JSON.stringify({ nodes, edges, level }, null, 2)
     const blob = new Blob([json], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
@@ -231,7 +237,7 @@ function SaveButton() {
       try {
         const data = JSON.parse(ev.target?.result as string)
         if (data.nodes && data.edges) {
-          loadPreset({ id: 'imported', name: 'Imported', description: '', nodes: data.nodes, edges: data.edges })
+          loadPreset({ id: 'imported', name: 'Imported', description: '', level: data.level ?? 'ks3', nodes: data.nodes, edges: data.edges })
         }
       } catch {
         alert('Invalid network file.')
@@ -278,6 +284,9 @@ function SaveButton() {
 
 // ─── Toolbar ──────────────────────────────────────────────────────────────────
 
+const LEVEL_LABELS: Record<Level, string> = { ks3: 'KS3', ks4: 'KS4', ks5: 'KS5' }
+const LEVELS: Level[] = ['ks3', 'ks4', 'ks5']
+
 interface ToolbarProps {
   connectionType: 'wired' | 'wireless'
   setConnectionType: (t: 'wired' | 'wireless') => void
@@ -287,9 +296,11 @@ interface ToolbarProps {
   infoOpen: boolean
   showLayers: boolean
   toggleLayers: () => void
+  level: Level
+  setLevel: (l: Level) => void
 }
 
-function Toolbar({ connectionType, setConnectionType, onDeleteSelected, onShowInfo, selectedNodeId, infoOpen, showLayers, toggleLayers }: ToolbarProps) {
+function Toolbar({ connectionType, setConnectionType, onDeleteSelected, onShowInfo, selectedNodeId, infoOpen, showLayers, toggleLayers, level, setLevel }: ToolbarProps) {
   return (
     <header className="flex items-center gap-2 px-4 py-2 bg-white border-b border-gray-200 z-10 flex-shrink-0 shadow-sm">
       <span className="font-bold text-lg tracking-tight text-blue-600 mr-1">Networx</span>
@@ -298,6 +309,24 @@ function Toolbar({ connectionType, setConnectionType, onDeleteSelected, onShowIn
 
       <PresetPicker />
       <SaveButton />
+
+      <div className="h-5 w-px bg-gray-200 mx-1" />
+
+      {/* Key stage selector */}
+      <div className="flex items-center gap-1 bg-gray-100 rounded-lg p-0.5" title="Curriculum level — controls which devices and features are available">
+        <GraduationCap size={13} className="ml-1.5 text-gray-400 flex-shrink-0" />
+        {LEVELS.map((l) => (
+          <button
+            key={l}
+            className={`px-2.5 py-1.5 rounded-md text-xs font-semibold transition-colors ${
+              level === l ? 'bg-white text-gray-800 shadow-sm' : 'text-gray-500 hover:text-gray-700'
+            }`}
+            onClick={() => setLevel(l)}
+          >
+            {LEVEL_LABELS[l]}
+          </button>
+        ))}
+      </div>
 
       <div className="h-5 w-px bg-gray-200 mx-1" />
 
@@ -335,15 +364,17 @@ function Toolbar({ connectionType, setConnectionType, onDeleteSelected, onShowIn
       )}
 
       <div className="ml-auto flex items-center gap-2">
-        <button
-          className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-            showLayers ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' : 'text-gray-600 hover:bg-gray-50'
-          }`}
-          onClick={toggleLayers}
-          title="Show TCP/IP layer for each device"
-        >
-          <Layers size={14} /> Layers
-        </button>
+        {level !== 'ks3' && (
+          <button
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+              showLayers ? 'bg-amber-50 text-amber-700 ring-1 ring-amber-200' : 'text-gray-600 hover:bg-gray-50'
+            }`}
+            onClick={toggleLayers}
+            title="Show TCP/IP layer for each device"
+          >
+            <Layers size={14} /> Layers
+          </button>
+        )}
         <button
           className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
             infoOpen ? 'bg-blue-50 text-blue-600' : 'text-gray-600 hover:bg-gray-50'
@@ -421,6 +452,7 @@ function AppInner() {
     connectionType, setConnectionType,
     selectedNodeId, activePanel, setPanel,
     showLayers, toggleLayers,
+    level, setLevel,
   } = useNetworkStore()
 
   const [infoOpen, setInfoOpen] = useState(false)
@@ -448,6 +480,8 @@ function AppInner() {
         infoOpen={infoOpen}
         showLayers={showLayers}
         toggleLayers={toggleLayers}
+        level={level}
+        setLevel={setLevel}
       />
 
       <div className="flex flex-1 overflow-hidden relative">
@@ -456,7 +490,7 @@ function AppInner() {
           className="flex-shrink-0 overflow-hidden transition-all duration-200"
           style={{ width: paletteOpen ? 208 : 0 }}
         >
-          {paletteOpen && <DevicePalette onAddDevice={handleAddDevice} />}
+          {paletteOpen && <DevicePalette onAddDevice={handleAddDevice} level={level} />}
         </div>
 
         <button

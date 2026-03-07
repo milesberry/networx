@@ -1,10 +1,11 @@
-import type { NetNode, NetEdge, TerminalLine, MacEntry, PacketAnim } from '../types'
+import type { NetNode, NetEdge, TerminalLine, MacEntry, PacketAnim, Level } from '../types'
 import { findPath, nodeByIp, nodeById, simulatePingRtt, subnetToCidr } from './network'
 
 export interface TermContext {
   selfId: string
   nodes: NetNode[]
   edges: NetEdge[]
+  level?: Level
   learnMac?: (switchId: string, entry: MacEntry) => void
   dispatchPackets?: (packets: PacketAnim[]) => void
 }
@@ -540,22 +541,30 @@ function cmdSsh(args: string[], ctx: TermContext): Lines {
   ]
 }
 
-function cmdHelp(): Lines {
-  return [
+function cmdHelp(ctx: TermContext): Lines {
+  const ks3 = ctx.level === 'ks3'
+  const lines: Lines = [
     out('Available commands:'),
-    out('  ping <ip|host>     – Test connectivity (e.g. ping google.com)'),
-    out('  traceroute <ip|host>– Trace network path (hostname ok)'),
+    out('  ping <ip|host>     – Test connectivity'),
     out('  ipconfig           – Show IP configuration (Windows style)'),
     out('  ifconfig           – Show IP configuration (Linux style)'),
-    out('  nslookup <domain>  – Query DNS for a domain name'),
-    out('  arp -a             – Show ARP table (neighbours)'),
-    out('  netstat            – Show active connections'),
-    out('  route              – Show routing table'),
-    out('  curl <url>         – Make HTTP request'),
-    out('  ssh <ip>           – Connect to remote host'),
+  ]
+  if (!ks3) {
+    lines.push(
+      out('  traceroute <ip|host>– Trace network path (hostname ok)'),
+      out('  nslookup <domain>  – Query DNS for a domain name'),
+      out('  arp -a             – Show ARP table (neighbours)'),
+      out('  netstat            – Show active connections'),
+      out('  route              – Show routing table'),
+      out('  curl <url>         – Make HTTP request'),
+      out('  ssh <ip>           – Connect to remote host'),
+    )
+  }
+  lines.push(
     out('  clear              – Clear terminal'),
     out('  help               – Show this help'),
-  ]
+  )
+  return lines
 }
 
 // ─── Dispatcher ─────────────────────────────────────────────────────────────
@@ -579,7 +588,7 @@ export function runCommand(raw: string, ctx: TermContext): TerminalLine[] {
     case 'wget': return cmdCurl(args, ctx)
     case 'ssh': return cmdSsh(args, ctx)
     case 'clear': return [{ type: 'output', text: '\x1bCLEAR' }]
-    case 'help': return cmdHelp()
+    case 'help': return cmdHelp(ctx)
     case '': return []
     default: return [err(`command not found: ${cmd}`)]
   }

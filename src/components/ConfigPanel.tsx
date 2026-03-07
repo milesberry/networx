@@ -3,6 +3,11 @@ import { X, Plus, Trash2, Power } from 'lucide-react'
 import { useNetworkStore } from '../store'
 import type { FirewallRule, DnsRecord } from '../types'
 
+const LEVEL_ORDER = { ks3: 3, ks4: 4, ks5: 5 } as const
+function atLeast(current: string, min: 'ks3' | 'ks4' | 'ks5') {
+  return LEVEL_ORDER[current as keyof typeof LEVEL_ORDER] >= LEVEL_ORDER[min]
+}
+
 interface Props {
   nodeId: string
   onClose: () => void
@@ -29,7 +34,7 @@ function Field({ label, value, onChange, placeholder = '', mono = false }: {
 }
 
 export default function ConfigPanel({ nodeId, onClose }: Props) {
-  const { nodes, updateNodeData, addRoute, removeRoute, addRule, removeRule, addDnsRecord, removeDnsRecord } = useNetworkStore()
+  const { nodes, updateNodeData, addRoute, removeRoute, addRule, removeRule, addDnsRecord, removeDnsRecord, level } = useNetworkStore()
   const node = nodes.find((n) => n.id === nodeId)
   const [tab, setTab] = useState<'basic' | 'advanced' | 'security' | 'page' | 'records'>('basic')
 
@@ -71,14 +76,16 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
   const isDns = data.deviceType === 'dns'
   const hasIp = !(isSwitch || isHub)
 
+  const advanced = atLeast(level, 'ks4')
+
   const TABS = [
     { id: 'basic', label: 'Basic' },
-    ...(isRouter ? [{ id: 'advanced', label: 'Routing' }] : []),
-    ...(isFirewall ? [{ id: 'security', label: 'Rules' }] : []),
-    ...(isSwitch ? [{ id: 'advanced', label: 'MAC Table' }] : []),
-    ...(isWap ? [{ id: 'advanced', label: 'Wireless' }] : []),
-    ...(isWeb ? [{ id: 'page', label: 'Page' }] : []),
-    ...(isDns ? [{ id: 'records', label: 'Records' }] : []),
+    ...(isRouter   && advanced ? [{ id: 'advanced', label: 'Routing' }]    : []),
+    ...(isFirewall && advanced ? [{ id: 'security', label: 'Rules' }]      : []),
+    ...(isSwitch   && advanced ? [{ id: 'advanced', label: 'MAC Table' }]  : []),
+    ...(isWap      && advanced ? [{ id: 'advanced', label: 'Wireless' }]   : []),
+    ...(isWeb      && advanced ? [{ id: 'page',     label: 'Page' }]       : []),
+    ...(isDns      && advanced ? [{ id: 'records',  label: 'Records' }]    : []),
   ] as { id: string; label: string }[]
 
   return (
@@ -132,14 +139,18 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
             {hasIp && (
               <>
                 <Field label="IP Address" value={data.ip} onChange={(v) => upd({ ip: v })} placeholder="192.168.1.x" mono />
-                <Field label="Subnet Mask" value={data.subnet} onChange={(v) => upd({ subnet: v })} placeholder="255.255.255.0" mono />
-                <Field label="Default Gateway" value={data.gateway} onChange={(v) => upd({ gateway: v })} placeholder="192.168.1.1" mono />
-                <div className="flex flex-col gap-1">
-                  <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">MAC Address</label>
-                  <span className="font-mono text-sm text-gray-600 bg-gray-50 rounded-md px-2.5 py-1.5 border border-gray-100">
-                    {data.mac}
-                  </span>
-                </div>
+                {advanced && (
+                  <>
+                    <Field label="Subnet Mask" value={data.subnet} onChange={(v) => upd({ subnet: v })} placeholder="255.255.255.0" mono />
+                    <Field label="Default Gateway" value={data.gateway} onChange={(v) => upd({ gateway: v })} placeholder="192.168.1.1" mono />
+                    <div className="flex flex-col gap-1">
+                      <label className="text-xs font-semibold text-gray-500 uppercase tracking-wide">MAC Address</label>
+                      <span className="font-mono text-sm text-gray-600 bg-gray-50 rounded-md px-2.5 py-1.5 border border-gray-100">
+                        {data.mac}
+                      </span>
+                    </div>
+                  </>
+                )}
               </>
             )}
             <Field label="Notes" value={data.notes} onChange={(v) => upd({ notes: v })} placeholder="Add notes..." />
