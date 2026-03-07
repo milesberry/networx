@@ -4,6 +4,8 @@ A browser-based network emulator for teaching computer networking concepts at GC
 
 **[Live demo →](https://milesberry.net/networx)**
 
+![Classroom network](classroom.png)
+
 ## What it does
 
 Networx lets you build virtual networks by dragging hardware components onto a canvas and connecting them with wired or wireless links. Once built, you can:
