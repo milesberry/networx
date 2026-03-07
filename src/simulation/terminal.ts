@@ -1,4 +1,4 @@
-import type { NetNode, NetEdge, TerminalLine, MacEntry, PacketAnim, Level } from '../types'
+import type { NetNode, NetEdge, TerminalLine, MacEntry, PacketAnim, Level, NodeData } from '../types'
 import { findPath, nodeByIp, nodeById, simulatePingRtt, subnetToCidr } from './network'
 
 export interface TermContext {
@@ -8,13 +8,14 @@ export interface TermContext {
   level?: Level
   learnMac?: (switchId: string, entry: MacEntry) => void
   dispatchPackets?: (packets: PacketAnim[]) => void
+  updateNodeData?: (id: string, patch: Partial<NodeData>) => void
 }
 
 // ── Packet animation helpers ──────────────────────────────────────────────────
 
 const HOP_MS = 500
 
-function edgesOnPath(nodeIds: string[], edges: NetEdge[]): string[] {
+export function edgesOnPath(nodeIds: string[], edges: NetEdge[]): string[] {
   return nodeIds.slice(0, -1).flatMap((nid, i) => {
     const next = nodeIds[i + 1]
     const e = edges.find(
@@ -24,7 +25,7 @@ function edgesOnPath(nodeIds: string[], edges: NetEdge[]): string[] {
   })
 }
 
-function makePackets(
+export function makePackets(
   nodeIds: string[],
   allEdges: NetEdge[],
   protocol: PacketAnim['protocol'],
@@ -101,7 +102,7 @@ function self(ctx: TermContext): NetNode {
 
 // ─── Hostname / DNS helpers ────────────────────────────────────────────────
 
-const PUBLIC_IPS: Record<string, string> = {
+export const PUBLIC_IPS: Record<string, string> = {
   'google.com':      '142.250.185.46',
   'www.google.com':  '142.250.185.46',
   'youtube.com':     '142.250.68.110',
@@ -306,7 +307,8 @@ function cmdTraceroute(args: string[], ctx: TermContext): Lines {
   return lines
 }
 
-function cmdIpconfig(_args: string[], ctx: TermContext): Lines {
+function cmdIpconfig(args: string[], ctx: TermContext): Lines {
+  if (args[0] === '/renew') return cmdDhclient([], ctx)
   const node = self(ctx)
   const { ip, subnet, gateway, mac } = node.data
   const cidr = subnet ? subnetToCidr(subnet) : 24
@@ -529,16 +531,102 @@ function cmdSsh(args: string[], ctx: TermContext): Lines {
   if (!target) return [err('Usage: ssh <ip-address>')]
   const dst = nodeByIp(target, ctx.nodes)
   if (!dst) return [err(`ssh: connect to host ${target}: No route to host`)]
+  if (!['pc', 'laptop', 'server', 'web', 'dns'].includes(dst.data.deviceType)) {
+    return [err(`ssh: connect to host ${target}: Connection refused`)]
+  }
   const path = findPath(self(ctx).id, dst.id, ctx.nodes, ctx.edges)
   if (!path) return [err(`ssh: connect to host ${target}: Network unreachable`)]
+  ctx.dispatchPackets?.(makePackets(path, ctx.edges, 'TCP', 'SSH'))
   return [
     out(`Connecting to ${target} (${dst.data.label})...`),
     out(`The authenticity of host '${target}' can't be established.`),
     out(`ECDSA key fingerprint is SHA256:${Math.random().toString(36).slice(2, 18).toUpperCase()}.`),
-    out(`Are you sure you want to continue connecting (yes/no)? yes`),
-    info(`[Simulated SSH session to ${dst.data.label} (${target})]`),
-    info(`Type 'exit' to return to local terminal.`),
+    out(`Warning: Permanently added '${target}' (ECDSA) to the list of known hosts.`),
+    info(`Connected to ${dst.data.label} (${target}). Type 'exit' to disconnect.`),
+    // Signal to Terminal component to enter SSH session mode
+    { type: 'output' as const, text: `\x1bSSH:${dst.id}` },
   ]
+}
+
+function cmdDhclient(_args: string[], ctx: TermContext): Lines {
+  const src = self(ctx)
+
+  // Find DHCP-enabled routers reachable from this node
+  const dhcpRouters = ctx.nodes.filter(
+    (n) => n.data.deviceType === 'router' && n.data.dhcpEnabled,
+  )
+
+  for (const router of dhcpRouters) {
+    const path = findPath(src.id, router.id, ctx.nodes, ctx.edges)
+    if (!path) continue
+
+    // Parse pool range (last-octet format "100-200")
+    const routerIpParts = router.data.ip.split('.')
+    const prefix = routerIpParts.slice(0, 3).join('.')
+    const pool = (router.data.dhcpPool as string | undefined) || '100-200'
+    const [startStr, endStr] = pool.split('-')
+    const startLast = parseInt(startStr ?? '100', 10)
+    const endLast   = endStr ? parseInt(endStr, 10) : 200
+
+    // Find next unused IP from pool
+    const usedIps = new Set(ctx.nodes.map((n) => n.data.ip).filter(Boolean))
+    let assignedIp: string | null = null
+    for (let i = startLast; i <= endLast; i++) {
+      const candidate = `${prefix}.${i}`
+      if (!usedIps.has(candidate)) { assignedIp = candidate; break }
+    }
+
+    if (!assignedIp) {
+      return [err('dhclient: No IPs available in DHCP pool — all addresses in use.')]
+    }
+
+    // Build 4-way DHCP handshake animation: DISCOVER → OFFER → REQUEST → ACK
+    const eids = edgesOnPath(path, ctx.edges)
+    const N = eids.length
+    const ts = Date.now()
+    const dhcpPackets: PacketAnim[] = [
+      // DISCOVER (client → router)
+      ...eids.map((edgeId, i) => ({
+        id: `pkt-${ts}-d${i}`, edgeId, protocol: 'UDP' as const, label: 'DISCOVER',
+        delayMs: i * HOP_MS, durationMs: HOP_MS,
+      })),
+      // OFFER (router → client)
+      ...[...eids].reverse().map((edgeId, i) => ({
+        id: `pkt-${ts}-o${i}`, edgeId, protocol: 'UDP' as const, label: 'OFFER',
+        delayMs: (N + i) * HOP_MS, durationMs: HOP_MS, reverse: true,
+      })),
+      // REQUEST (client → router)
+      ...eids.map((edgeId, i) => ({
+        id: `pkt-${ts}-req${i}`, edgeId, protocol: 'UDP' as const, label: 'REQUEST',
+        delayMs: (2 * N + i) * HOP_MS, durationMs: HOP_MS,
+      })),
+      // ACK (router → client)
+      ...[...eids].reverse().map((edgeId, i) => ({
+        id: `pkt-${ts}-ack${i}`, edgeId, protocol: 'UDP' as const, label: 'ACK',
+        delayMs: (3 * N + i) * HOP_MS, durationMs: HOP_MS, reverse: true,
+      })),
+    ]
+    ctx.dispatchPackets?.(dhcpPackets)
+
+    // Update the node's IP address
+    ctx.updateNodeData?.(src.id, {
+      ip: assignedIp,
+      gateway: `${prefix}.1`,
+      subnet: '255.255.255.0',
+    })
+
+    return [
+      info('DHCP DISCOVER sent (broadcast)…'),
+      info(`DHCP OFFER received from ${router.data.ip}: ${assignedIp}`),
+      info('DHCP REQUEST sent…'),
+      info(`DHCP ACK — lease granted.`),
+      out(''),
+      out(`inet ${assignedIp}/24 brd ${prefix}.255 scope global dynamic eth0`),
+      out(`   valid_lft 86400sec preferred_lft 86400sec`),
+    ]
+  }
+
+  return [err('dhclient: No DHCP server found. Is a router with DHCP enabled connected to this network?')]
 }
 
 function cmdHelp(ctx: TermContext): Lines {
@@ -557,7 +645,9 @@ function cmdHelp(ctx: TermContext): Lines {
       out('  netstat            – Show active connections'),
       out('  route              – Show routing table'),
       out('  curl <url>         – Make HTTP request'),
-      out('  ssh <ip>           – Connect to remote host'),
+      out('  ssh <ip>           – Connect to remote host (exit to quit)'),
+      out('  dhclient           – Request IP from DHCP server'),
+      out('  ipconfig /renew    – Same as dhclient (Windows style)'),
     )
   }
   lines.push(
@@ -587,6 +677,7 @@ export function runCommand(raw: string, ctx: TermContext): TerminalLine[] {
     case 'curl':
     case 'wget': return cmdCurl(args, ctx)
     case 'ssh': return cmdSsh(args, ctx)
+    case 'dhclient': return cmdDhclient(args, ctx)
     case 'clear': return [{ type: 'output', text: '\x1bCLEAR' }]
     case 'help': return cmdHelp(ctx)
     case '': return []

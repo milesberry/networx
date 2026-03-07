@@ -38,6 +38,8 @@ export function makeDefaultData(type: DeviceType, id: string): NodeData {
     mac: randomMac(),
     isOn: true,
     routingTable: [],
+    dhcpEnabled: false,
+    dhcpPool: '100-200',
     macTable: [],
     ssid: 'NetworX-WiFi',
     wpaKey: 'password123',
@@ -55,6 +57,8 @@ export function makeDefaultData(type: DeviceType, id: string): NodeData {
       base.routingTable = [
         { destination: '0.0.0.0', subnet: '0.0.0.0', gateway: '0.0.0.0', iface: 'eth0', metric: 0 },
       ]
+      base.dhcpEnabled = true
+      base.dhcpPool = '100-200'
       break
     case 'switch':
     case 'hub':

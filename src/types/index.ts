@@ -60,6 +60,9 @@ export interface NodeData extends Record<string, unknown> {
   isOn: boolean
   // Router
   routingTable: RouteEntry[]
+  // Router DHCP server
+  dhcpEnabled: boolean
+  dhcpPool: string  // last-octet range, e.g. "100-200"
   // Switch
   macTable: MacEntry[]
   // WAP
@@ -81,7 +84,7 @@ export interface NodeData extends Record<string, unknown> {
 export type NetNode = Node<NodeData>
 export type NetEdge = Edge
 
-export type PanelType = 'config' | 'terminal' | 'info' | null
+export type PanelType = 'config' | 'terminal' | 'browser' | 'info' | null
 
 export interface PacketAnim {
   id: string

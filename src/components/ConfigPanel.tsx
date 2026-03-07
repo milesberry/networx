@@ -153,6 +153,45 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
                 )}
               </>
             )}
+            {/* DHCP server section — routers only, KS4+ */}
+            {isRouter && advanced && (
+              <div className="border border-gray-100 rounded-lg p-3 space-y-3 bg-gray-50">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <div className="text-sm font-medium text-gray-700">DHCP Server</div>
+                    <div className="text-xs text-gray-400">Auto-assign IPs to clients</div>
+                  </div>
+                  <button
+                    role="switch"
+                    aria-checked={!!data.dhcpEnabled}
+                    className={`relative inline-flex h-5 w-9 flex-shrink-0 rounded-full border-2 border-transparent transition-colors focus:outline-none ${
+                      data.dhcpEnabled ? 'bg-blue-500' : 'bg-gray-300'
+                    }`}
+                    onClick={() => upd({ dhcpEnabled: !data.dhcpEnabled })}
+                    title="Toggle DHCP server"
+                  >
+                    <span className={`pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow ring-0 transition-transform ${
+                      data.dhcpEnabled ? 'translate-x-4' : 'translate-x-0'
+                    }`} />
+                  </button>
+                </div>
+                {data.dhcpEnabled && (
+                  <>
+                    <Field
+                      label="IP Pool (last octet range)"
+                      value={(data.dhcpPool as string) ?? '100-200'}
+                      onChange={(v) => upd({ dhcpPool: v })}
+                      placeholder="100-200"
+                      mono
+                    />
+                    <p className="text-xs text-gray-400">
+                      Clients run <code className="bg-gray-100 px-1 rounded font-mono">dhclient</code> or{' '}
+                      <code className="bg-gray-100 px-1 rounded font-mono">ipconfig /renew</code> to get an IP from the pool.
+                    </p>
+                  </>
+                )}
+              </div>
+            )}
             <Field label="Notes" value={data.notes} onChange={(v) => upd({ notes: v })} placeholder="Add notes..." />
           </>
         )}

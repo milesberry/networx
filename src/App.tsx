@@ -22,6 +22,7 @@ import DeletableEdge from './edges/DeletableEdge'
 import DevicePalette from './components/DevicePalette'
 import ConfigPanel from './components/ConfigPanel'
 import Terminal from './components/Terminal'
+import Browser from './components/Browser'
 import InfoPanel from './components/InfoPanel'
 import { PRESETS } from './simulation/presets'
 import type { DeviceType, NetNode } from './types'
@@ -402,6 +403,7 @@ function SidePanel() {
   const { nodes, selectedNodeId, activePanel, setPanel } = useNetworkStore()
   const node = nodes.find((n) => n.id === selectedNodeId)
   const hasTerminal = node && ['pc', 'laptop', 'server', 'dns', 'web'].includes(node.data.deviceType)
+  const hasBrowser  = node && ['pc', 'laptop', 'server'].includes(node.data.deviceType)
 
   if (!activePanel) return null
 
@@ -433,11 +435,24 @@ function SidePanel() {
               Terminal
             </button>
           )}
+          {hasBrowser && (
+            <button
+              className={`flex-1 py-2 text-xs font-medium transition-colors ${
+                activePanel === 'browser'
+                  ? 'bg-blue-50 text-blue-700 border-b-2 border-blue-500'
+                  : 'text-gray-500 hover:text-gray-700'
+              }`}
+              onClick={() => setPanel('browser')}
+            >
+              Browser
+            </button>
+          )}
         </div>
       )}
       <div className="flex-1 overflow-hidden">
         {activePanel === 'config'   && selectedNodeId && <ConfigPanel nodeId={selectedNodeId} onClose={onClose} />}
         {activePanel === 'terminal' && selectedNodeId && <Terminal    nodeId={selectedNodeId} onClose={onClose} />}
+        {activePanel === 'browser'  && selectedNodeId && <Browser     nodeId={selectedNodeId} />}
         {activePanel === 'info'     && <InfoPanel onClose={onClose} />}
       </div>
     </aside>

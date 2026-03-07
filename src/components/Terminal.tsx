@@ -10,15 +10,21 @@ interface Props {
 }
 
 export default function Terminal({ nodeId, onClose }: Props) {
-  const { nodes, edges, appendTermLine, clearTerm, learnMac, dispatchPackets, level } = useNetworkStore()
+  const { nodes, edges, appendTermLine, clearTerm, learnMac, dispatchPackets, updateNodeData, level } = useNetworkStore()
   const node = nodes.find((n) => n.id === nodeId)
   const [input, setInput] = useState('')
   const [histIdx, setHistIdx] = useState(-1)
   const [cmdHistory, setCmdHistory] = useState<string[]>([])
+  // SSH session: when set, commands run as this remote node
+  const [sshNodeId, setSshNodeId] = useState<string | null>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
+  const sshNode = sshNodeId ? nodes.find((n) => n.id === sshNodeId) : null
   const lines: TerminalLine[] = node?.data.termHistory ?? []
+
+  // Reset SSH session if the panel is switched to a different node
+  useEffect(() => { setSshNodeId(null) }, [nodeId])
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -33,22 +39,47 @@ export default function Terminal({ nodeId, onClose }: Props) {
     const raw = input.trim()
     if (!raw) return
 
-    // Echo the input
-    appendTermLine(nodeId, { type: 'input', text: `$ ${raw}` })
+    // ── 'exit' while SSH'd into a remote node ───────────────────────────────
+    if (sshNodeId) {
+      if (raw === 'exit') {
+        appendTermLine(nodeId, { type: 'input', text: `${sshNode?.data.ip ?? 'remote'}:~$ exit` })
+        appendTermLine(nodeId, { type: 'info',  text: `Connection to ${sshNode?.data.ip ?? 'remote'} closed.` })
+        setSshNodeId(null)
+        setCmdHistory((h) => [raw, ...h].slice(0, 50))
+        setHistIdx(-1)
+        setInput('')
+        return
+      }
+    }
 
-    const result = runCommand(raw, { selfId: nodeId, nodes, edges, level, learnMac, dispatchPackets })
+    // Echo input with appropriate prompt
+    const promptPrefix = sshNode ? `${sshNode.data.ip}:~$ ` : '$ '
+    appendTermLine(nodeId, { type: 'input', text: `${promptPrefix}${raw}` })
 
-    // Check for CLEAR signal
+    const result = runCommand(raw, {
+      selfId: sshNodeId ?? nodeId,
+      nodes, edges, level, learnMac, dispatchPackets, updateNodeData,
+    })
+
+    // Handle CLEAR signal
     if (result.length === 1 && result[0]?.text === '\x1bCLEAR') {
       clearTerm(nodeId)
     } else {
-      result.forEach((line) => appendTermLine(nodeId, line))
+      // Detect SSH connection signal
+      const sshSignal = result.find((l) => l.text.startsWith('\x1bSSH:'))
+      if (sshSignal) {
+        setSshNodeId(sshSignal.text.slice(5))
+      }
+      // Append all non-signal lines
+      result
+        .filter((l) => !l.text.startsWith('\x1b'))
+        .forEach((line) => appendTermLine(nodeId, line))
     }
 
     setCmdHistory((h) => [raw, ...h].slice(0, 50))
     setHistIdx(-1)
     setInput('')
-  }, [input, nodeId, nodes, edges, appendTermLine, clearTerm])
+  }, [input, nodeId, nodes, edges, appendTermLine, clearTerm, learnMac, dispatchPackets, updateNodeData, level, sshNodeId, sshNode])
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter') { submit(); return }
@@ -80,7 +111,9 @@ export default function Terminal({ nodeId, onClose }: Props) {
       {/* Title bar */}
       <div className="flex items-center justify-between px-3 py-2 bg-gray-800 border-b border-gray-700">
         <span className="text-gray-300 text-xs font-semibold">
-          Terminal – {node?.data.label ?? nodeId}
+          {sshNode
+            ? `SSH → ${sshNode.data.label} (${sshNode.data.ip})`
+            : `Terminal – ${node?.data.label ?? nodeId}`}
         </span>
         <div className="flex gap-2">
           <button
@@ -118,7 +151,9 @@ export default function Terminal({ nodeId, onClose }: Props) {
 
       {/* Input */}
       <div className="flex items-center gap-2 px-3 py-2 border-t border-gray-700 bg-gray-800">
-        <span className="text-green-400 select-none">$</span>
+        <span className="text-green-400 select-none text-xs">
+          {sshNode ? `${sshNode.data.ip}:~$` : '$'}
+        </span>
         <input
           ref={inputRef}
           className="flex-1 bg-transparent text-gray-100 outline-none caret-green-400 text-sm font-mono"
