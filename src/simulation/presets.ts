@@ -28,6 +28,7 @@ function node(
       wpaKey: 'password123',
       band: '2.4GHz',
       rules: [],
+      dnsRecords: [],
       pageContent: deviceType === 'web'
         ? `<!DOCTYPE html>\n<html>\n<head>\n  <title>${label}</title>\n</head>\n<body>\n  <h1>Welcome to ${label}</h1>\n  <p>This page is served from <strong>${ip}</strong>.</p>\n  <p>Edit this content in the Configure panel &rarr; Page tab.</p>\n</body>\n</html>`
         : '',
@@ -136,7 +137,12 @@ const schoolNetwork: Preset = {
     node('sw-core', 'switch',   'Core Switch',    '',               { x: 580, y: 330 }),
     node('srv1',    'server',   'File Server',    '192.168.0.10',   { x: 780, y: 120 },
       { notes: 'Central file storage for the school. Accessible to all on the LAN.' }),
-    node('dns1',    'dns',      'DNS Server',     '192.168.0.53',   { x: 780, y: 230 }),
+    node('dns1',    'dns',      'DNS Server',     '192.168.0.53',   { x: 780, y: 230 },
+      { dnsRecords: [
+          { id: 'dr1', hostname: 'www.school.local',      ip: '192.168.0.80'  },
+          { id: 'dr2', hostname: 'files.school.local',    ip: '192.168.0.10'  },
+          { id: 'dr3', hostname: 'intranet.school.local', ip: '192.168.0.80'  },
+        ] }),
     node('web1',    'web',      'Web Server',     '192.168.0.80',   { x: 780, y: 340 }),
     node('sw-cls',  'switch',   'Classroom Switch','',              { x: 780, y: 460 }),
     node('wap1',    'wap',      'Wi-Fi AP',       '192.168.0.200',  { x: 780, y: 570 },
@@ -170,9 +176,13 @@ const clientServer: Preset = {
   nodes: [
     node('sw1',   'switch', 'Switch',      '',              { x: 320, y: 280 }),
     node('dns1',  'dns',    'DNS Server',  '192.168.1.53',  { x: 100, y: 100 },
-      { notes: 'Resolves domain names to IP addresses. Try: nslookup example.com' }),
+      { notes: 'Resolves domain names to IP addresses. Try: nslookup www.local',
+        dnsRecords: [
+          { id: 'dr1', hostname: 'www.local',  ip: '192.168.1.80' },
+          { id: 'dr2', hostname: 'web.local',  ip: '192.168.1.80' },
+        ] }),
     node('web1',  'web',    'Web Server',  '192.168.1.80',  { x: 540, y: 100 },
-      { notes: 'Serves HTTP pages on port 80. Try: curl http://example.com from a PC.' }),
+      { notes: 'Serves HTTP pages on port 80. Try: curl www.local from a PC terminal.' }),
     node('pc1',   'pc',     'Client 1',   '192.168.1.11',  { x: 100, y: 420 }),
     node('pc2',   'pc',     'Client 2',   '192.168.1.12',  { x: 320, y: 460 }),
     node('pc3',   'pc',     'Client 3',   '192.168.1.13',  { x: 540, y: 420 }),
