@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react'
 import type { NodeChange, EdgeChange, Connection } from '@xyflow/react'
-import type { NetNode, NetEdge, NodeData, PanelType, RouteEntry, MacEntry, FirewallRule, TerminalLine, PacketAnim } from '../types'
+import type { NetNode, NetEdge, NodeData, PanelType, RouteEntry, MacEntry, FirewallRule, DnsRecord, TerminalLine, PacketAnim } from '../types'
 import { makeDefaultData } from '../simulation/defaults'
 import type { Preset } from '../simulation/presets'
 
@@ -63,6 +63,10 @@ interface NetworkStore {
   // Firewall
   addRule: (nodeId: string, rule: FirewallRule) => void
   removeRule: (nodeId: string, id: string) => void
+
+  // DNS records
+  addDnsRecord: (nodeId: string, record: DnsRecord) => void
+  removeDnsRecord: (nodeId: string, id: string) => void
 
   // Packet animations
   activePackets: PacketAnim[]
@@ -202,6 +206,24 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
       nodes: s.nodes.map((n) =>
         n.id === nodeId
           ? { ...n, data: { ...n.data, rules: n.data.rules.filter((r) => r.id !== ruleId) } }
+          : n,
+      ),
+    })),
+
+  addDnsRecord: (nodeId, record) =>
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
+        n.id === nodeId
+          ? { ...n, data: { ...n.data, dnsRecords: [...(n.data.dnsRecords ?? []), record] } }
+          : n,
+      ),
+    })),
+
+  removeDnsRecord: (nodeId, recordId) =>
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
+        n.id === nodeId
+          ? { ...n, data: { ...n.data, dnsRecords: (n.data.dnsRecords ?? []).filter((r) => r.id !== recordId) } }
           : n,
       ),
     })),

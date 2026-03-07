@@ -128,7 +128,7 @@ function isHostname(s: string): boolean {
 function resolveHostname(
   hostname: string,
   ctx: TermContext,
-): { ip: string; dnsIp: string; cloudId: string | null } | null {
+): { ip: string; dnsIp: string; cloudId: string | null; isLocal: boolean } | null {
   const cloudNode = ctx.nodes.find((n) => n.data.deviceType === 'cloud')
   const dnsNode   = ctx.nodes.find((n) => n.data.deviceType === 'dns')
 
@@ -141,11 +141,19 @@ function resolveHostname(
 
   if (!canReachCloud && !canReachDns) return null
 
-  const ip = PUBLIC_IPS[hostname]
+  // Check DNS node's local records first (exact match, case-insensitive)
+  const localRecord = canReachDns
+    ? (dnsNode!.data.dnsRecords ?? []).find(
+        (r) => r.hostname.toLowerCase() === hostname.toLowerCase(),
+      )
+    : undefined
+
+  const ip = localRecord?.ip
+    ?? PUBLIC_IPS[hostname]
     ?? `93.184.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`
   const dnsIp = canReachDns ? (dnsNode!.data.ip || '8.8.8.8') : '8.8.8.8'
 
-  return { ip, dnsIp, cloudId: cloudNode?.id ?? null }
+  return { ip, dnsIp, cloudId: cloudNode?.id ?? null, isLocal: !!localRecord }
 }
 
 // Simulated internet backbone hops shown in traceroute
@@ -333,17 +341,38 @@ function cmdNslookup(args: string[], ctx: TermContext): Lines {
   }
 
   const dnsIp = canReachDns ? (dnsNode!.data.ip || '8.8.8.8') : '8.8.8.8'
-  const resolvedIp = PUBLIC_IPS[domain]
+
+  // Check local DNS records first
+  const localRecord = canReachDns
+    ? (dnsNode!.data.dnsRecords ?? []).find(
+        (r) => r.hostname.toLowerCase() === domain.toLowerCase(),
+      )
+    : undefined
+
+  const resolvedIp = localRecord?.ip
+    ?? PUBLIC_IPS[domain]
     ?? `93.184.${Math.floor(Math.random() * 256)}.${Math.floor(Math.random() * 256)}`
 
-  return [
+  const lines: Lines = [
     out(`Server:   ${dnsIp}`),
     out(`Address:  ${dnsIp}#53`),
     out(''),
-    out(`Non-authoritative answer:`),
-    out(`Name:     ${domain}`),
-    out(`Address:  ${resolvedIp}`),
   ]
+
+  if (localRecord) {
+    lines.push(
+      out(`Name:     ${domain}`),
+      out(`Address:  ${resolvedIp}`),
+    )
+  } else {
+    lines.push(
+      out(`Non-authoritative answer:`),
+      out(`Name:     ${domain}`),
+      out(`Address:  ${resolvedIp}`),
+    )
+  }
+
+  return lines
 }
 
 function cmdArp(_args: string[], ctx: TermContext): Lines {
@@ -406,10 +435,35 @@ function cmdCurl(args: string[], ctx: TermContext): Lines {
     ]
   }
 
-  // If local web server is reachable and URL looks local (IP address), use it
-  if (localPath && !isHostname(hostname)) {
+  // If hostname is an IP address and matches a reachable local web server, serve it
+  if (!isHostname(hostname) && localPath && webNode?.data.ip === hostname) {
     ctx.dispatchPackets?.(makePackets(localPath, ctx.edges, 'HTTP', 'HTTP', true))
     return renderPage(webNode)
+  }
+
+  // If hostname is a domain, try to resolve it via the DNS node's local records
+  if (isHostname(hostname)) {
+    const dnsNode = ctx.nodes.find((n) => n.data.deviceType === 'dns')
+    const dnsPath = dnsNode ? findPath(src.id, dnsNode.id, ctx.nodes, ctx.edges) : null
+    const localRecord = dnsPath
+      ? (dnsNode!.data.dnsRecords ?? []).find(
+          (r) => r.hostname.toLowerCase() === hostname.toLowerCase(),
+        )
+      : undefined
+
+    if (localRecord) {
+      // Resolved locally — find the web server with that IP
+      const targetWeb = ctx.nodes.find(
+        (n) => n.data.deviceType === 'web' && n.data.ip === localRecord.ip,
+      )
+      const targetPath = targetWeb ? findPath(src.id, targetWeb.id, ctx.nodes, ctx.edges) : null
+      if (dnsPath) ctx.dispatchPackets?.(makePackets(dnsPath, ctx.edges, 'DNS', 'DNS', false))
+      if (targetPath) {
+        ctx.dispatchPackets?.(makePackets(targetPath, ctx.edges, 'HTTP', 'HTTP', true))
+        return renderPage(targetWeb)
+      }
+      return [err(`curl: (7) Failed to connect to ${hostname} (${localRecord.ip}): No route to host`)]
+    }
   }
 
   // External URL — need internet access
@@ -420,8 +474,8 @@ function cmdCurl(args: string[], ctx: TermContext): Lines {
     return [err(`curl: (6) Could not resolve host: ${hostname}`)]
   }
 
-  // If local web server exists and is reachable, prefer it for local-looking hosts
-  if (localPath) {
+  // If local web server exists and is reachable, use it for any reachable host (fallback)
+  if (localPath && !isHostname(hostname)) {
     ctx.dispatchPackets?.(makePackets(localPath, ctx.edges, 'HTTP', 'HTTP', true))
     return renderPage(webNode)
   }

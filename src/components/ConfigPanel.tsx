@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X, Plus, Trash2, Power } from 'lucide-react'
 import { useNetworkStore } from '../store'
-import type { FirewallRule } from '../types'
+import type { FirewallRule, DnsRecord } from '../types'
 
 interface Props {
   nodeId: string
@@ -29,9 +29,9 @@ function Field({ label, value, onChange, placeholder = '', mono = false }: {
 }
 
 export default function ConfigPanel({ nodeId, onClose }: Props) {
-  const { nodes, updateNodeData, addRoute, removeRoute, addRule, removeRule } = useNetworkStore()
+  const { nodes, updateNodeData, addRoute, removeRoute, addRule, removeRule, addDnsRecord, removeDnsRecord } = useNetworkStore()
   const node = nodes.find((n) => n.id === nodeId)
-  const [tab, setTab] = useState<'basic' | 'advanced' | 'security' | 'page'>('basic')
+  const [tab, setTab] = useState<'basic' | 'advanced' | 'security' | 'page' | 'records'>('basic')
 
   if (!node) return null
 
@@ -40,6 +40,14 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
 
   function handleAddRoute() {
     addRoute(nodeId, { destination: '10.0.0.0', subnet: '255.255.255.0', gateway: '0.0.0.0', iface: 'eth0', metric: 1 })
+  }
+
+  function handleAddDnsRecord() {
+    addDnsRecord(nodeId, {
+      id: `dr${Date.now()}`,
+      hostname: 'host.local',
+      ip: '192.168.1.',
+    } satisfies DnsRecord)
   }
 
   function handleAddRule() {
@@ -60,6 +68,7 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
   const isWap = data.deviceType === 'wap'
   const isFirewall = data.deviceType === 'firewall'
   const isWeb = data.deviceType === 'web'
+  const isDns = data.deviceType === 'dns'
   const hasIp = !(isSwitch || isHub)
 
   const TABS = [
@@ -69,6 +78,7 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
     ...(isSwitch ? [{ id: 'advanced', label: 'MAC Table' }] : []),
     ...(isWap ? [{ id: 'advanced', label: 'Wireless' }] : []),
     ...(isWeb ? [{ id: 'page', label: 'Page' }] : []),
+    ...(isDns ? [{ id: 'records', label: 'Records' }] : []),
   ] as { id: string; label: string }[]
 
   return (
@@ -254,6 +264,66 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
               onChange={(e) => upd({ pageContent: e.target.value })}
               spellCheck={false}
             />
+          </div>
+        )}
+
+        {tab === 'records' && isDns && (
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-sm font-semibold text-gray-700">DNS Records (A)</h3>
+              <button
+                className="flex items-center gap-1 text-xs bg-blue-50 text-blue-600 hover:bg-blue-100 px-2 py-1 rounded transition-colors"
+                onClick={handleAddDnsRecord}
+              >
+                <Plus size={12} /> Add Record
+              </button>
+            </div>
+            <p className="text-xs text-gray-400 mb-3">
+              Local hostnames resolved by this server. Use{' '}
+              <code className="bg-gray-100 px-1 rounded font-mono">nslookup host.local</code>{' '}
+              from any connected device.
+            </p>
+            <div className="space-y-2">
+              {(data.dnsRecords ?? []).map((rec) => (
+                <div key={rec.id} className="flex items-center gap-2 bg-gray-50 rounded-lg px-3 py-2 relative">
+                  <div className="flex-1 min-w-0">
+                    <input
+                      className="w-full font-mono text-xs border border-gray-200 rounded px-1.5 py-0.5 mb-1 bg-white"
+                      placeholder="hostname.local"
+                      value={rec.hostname}
+                      onChange={(e) => {
+                        const updated = (data.dnsRecords ?? []).map((r) =>
+                          r.id === rec.id ? { ...r, hostname: e.target.value } : r
+                        )
+                        upd({ dnsRecords: updated })
+                      }}
+                    />
+                    <input
+                      className="w-full font-mono text-xs border border-gray-200 rounded px-1.5 py-0.5 bg-white"
+                      placeholder="192.168.1.x"
+                      value={rec.ip}
+                      onChange={(e) => {
+                        const updated = (data.dnsRecords ?? []).map((r) =>
+                          r.id === rec.id ? { ...r, ip: e.target.value } : r
+                        )
+                        upd({ dnsRecords: updated })
+                      }}
+                    />
+                  </div>
+                  <button
+                    className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                    onClick={() => removeDnsRecord(nodeId, rec.id)}
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+              {(data.dnsRecords ?? []).length === 0 && (
+                <p className="text-xs text-gray-400 text-center py-4">
+                  No records. Add an A record above.
+                </p>
+              )}
+            </div>
           </div>
         )}
 

@@ -43,6 +43,7 @@ export function makeDefaultData(type: DeviceType, id: string): NodeData {
     wpaKey: 'password123',
     band: '2.4GHz',
     rules: [],
+    dnsRecords: [],
     pageContent: '',
     termHistory: [],
     notes: '',
@@ -75,6 +76,10 @@ export function makeDefaultData(type: DeviceType, id: string): NodeData {
     case 'dns':
       base.ip = '192.168.1.53'
       base.label = 'DNS Server'
+      base.dnsRecords = [
+        { id: 'dr1', hostname: 'www.school.local', ip: '192.168.1.80' },
+        { id: 'dr2', hostname: 'intranet.school.local', ip: '192.168.1.81' },
+      ]
       break
     case 'web':
       base.ip = nextIp()

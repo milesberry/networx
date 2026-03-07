@@ -27,6 +27,12 @@ export interface MacEntry {
   vlan: number
 }
 
+export interface DnsRecord {
+  id: string
+  hostname: string
+  ip: string
+}
+
 export interface FirewallRule {
   id: string
   direction: 'in' | 'out'
@@ -60,6 +66,8 @@ export interface NodeData extends Record<string, unknown> {
   band: '2.4GHz' | '5GHz'
   // Firewall
   rules: FirewallRule[]
+  // DNS server records
+  dnsRecords: DnsRecord[]
   // Web server hosted page
   pageContent: string
   // Terminal history (pc, laptop, server)
