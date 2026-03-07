@@ -11,6 +11,10 @@ A browser-based network emulator for teaching computer networking concepts at GC
 Networx lets you build virtual networks by dragging hardware components onto a canvas and connecting them with wired or wireless links. Once built, you can:
 
 - **Run terminal commands** on PCs, laptops, and servers — `ping`, `traceroute`, `ipconfig`, `nslookup`, `curl`, `ssh`, and more
+- **Browse the web** — a built-in browser on PC/Laptop/Server nodes renders pages served by Web Server nodes, resolves hostnames via local DNS, and simulates internet access through a Cloud node
+- **SSH between nodes** — `ssh <ip>` opens a persistent session; all subsequent commands run as the remote device until you type `exit`
+- **Assign IPs with DHCP** — routers run a DHCP server; clients request leases with `dhclient` (Linux) or `ipconfig /renew` (Windows), animating the full four-way handshake
+- **Configure DNS records** — DNS Server nodes hold A records that resolve hostnames across the network
 - **Ping domain names** — `ping google.com` resolves via DNS and routes through the internet node
 - **Inspect switch MAC tables** — tables populate as traffic flows, showing which MAC address was learned on which port
 - **Configure routers** — add static routing table entries
