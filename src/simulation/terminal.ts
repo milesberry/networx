@@ -180,6 +180,13 @@ function cmdPing(args: string[], ctx: TermContext): Lines {
     const cloudPath = cloudNode
       ? findPath(src.id, cloudNode.id, ctx.nodes, ctx.edges)
       : null
+
+    // Animate DNS lookup then ICMP packets to the internet
+    const dnsNode = ctx.nodes.find((n) => n.data.deviceType === 'dns')
+    const dnsPath = dnsNode ? findPath(src.id, dnsNode.id, ctx.nodes, ctx.edges) : null
+    if (dnsPath) ctx.dispatchPackets?.(makePackets(dnsPath, ctx.edges, 'DNS', 'DNS', true))
+    if (cloudPath) ctx.dispatchPackets?.(makePackets(cloudPath, ctx.edges, 'ICMP', 'ICMP', true))
+
     const hops = (cloudPath?.length ?? 3) - 1
     const baseRtt = 20 + hops * 8
 
@@ -239,6 +246,12 @@ function cmdTraceroute(args: string[], ctx: TermContext): Lines {
     const cloudPath = cloudNode
       ? findPath(src.id, cloudNode.id, ctx.nodes, ctx.edges)
       : null
+
+    // Animate DNS lookup then ICMP probe packets towards the internet
+    const dnsNode = ctx.nodes.find((n) => n.data.deviceType === 'dns')
+    const dnsPath = dnsNode ? findPath(src.id, dnsNode.id, ctx.nodes, ctx.edges) : null
+    if (dnsPath) ctx.dispatchPackets?.(makePackets(dnsPath, ctx.edges, 'DNS', 'DNS', true))
+    if (cloudPath) ctx.dispatchPackets?.(makePackets(cloudPath, ctx.edges, 'ICMP', 'ICMP'))
 
     const lines: Lines = [
       info(`Resolving ${target} via DNS (${resolved.dnsIp})…`),
