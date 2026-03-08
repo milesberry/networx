@@ -36,7 +36,7 @@ function Field({ label, value, onChange, placeholder = '', mono = false }: {
 export default function ConfigPanel({ nodeId, onClose }: Props) {
   const { nodes, updateNodeData, addRoute, removeRoute, addRule, removeRule, addDnsRecord, removeDnsRecord, level } = useNetworkStore()
   const node = nodes.find((n) => n.id === nodeId)
-  const [tab, setTab] = useState<'basic' | 'advanced' | 'security' | 'page' | 'records'>('basic')
+  const [tab, setTab] = useState<'basic' | 'advanced' | 'security' | 'wireless' | 'page' | 'records'>('basic')
 
   if (!node) return null
 
@@ -72,6 +72,7 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
   const isHub = data.deviceType === 'hub'
   const isWap = data.deviceType === 'wap'
   const isFirewall = data.deviceType === 'firewall'
+  const isGateway = data.deviceType === 'gateway'
   const isWeb = data.deviceType === 'web'
   const isDns = data.deviceType === 'dns'
   const hasIp = !(isSwitch || isHub)
@@ -79,13 +80,13 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
   const advanced = atLeast(level, 'ks4')
 
   const TABS = [
-    { id: 'basic', label: 'Basic' },
-    ...(isRouter   && advanced ? [{ id: 'advanced', label: 'Routing' }]    : []),
-    ...(isFirewall && advanced ? [{ id: 'security', label: 'Rules' }]      : []),
-    ...(isSwitch   && advanced ? [{ id: 'advanced', label: 'MAC Table' }]  : []),
-    ...(isWap      && advanced ? [{ id: 'advanced', label: 'Wireless' }]   : []),
-    ...(isWeb      && advanced ? [{ id: 'page',     label: 'Page' }]       : []),
-    ...(isDns      && advanced ? [{ id: 'records',  label: 'Records' }]    : []),
+    { id: 'basic',    label: 'Basic' },
+    ...(isSwitch                        && advanced ? [{ id: 'advanced', label: 'MAC Table' }] : []),
+    ...((isRouter   || isGateway)       && advanced ? [{ id: 'advanced', label: 'Routing' }]   : []),
+    ...((isWap      || isGateway)       && advanced ? [{ id: 'wireless', label: 'Wireless' }]  : []),
+    ...((isFirewall || isGateway)       && advanced ? [{ id: 'security', label: 'Security' }]  : []),
+    ...(isWeb                           && advanced ? [{ id: 'page',     label: 'Page' }]       : []),
+    ...(isDns                           && advanced ? [{ id: 'records',  label: 'Records' }]    : []),
   ] as { id: string; label: string }[]
 
   return (
@@ -153,8 +154,8 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
                 )}
               </>
             )}
-            {/* DHCP server section — routers only, KS4+ */}
-            {isRouter && advanced && (
+            {/* DHCP server section — routers and gateways, KS4+ */}
+            {(isRouter || isGateway) && advanced && (
               <div className="border border-gray-100 rounded-lg p-3 space-y-3 bg-gray-50">
                 <div className="flex items-center justify-between">
                   <div>
@@ -196,7 +197,7 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
           </>
         )}
 
-        {tab === 'advanced' && isRouter && (
+        {tab === 'advanced' && (isRouter || isGateway) && (
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-700">Routing Table</h3>
@@ -270,7 +271,7 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
           </div>
         )}
 
-        {tab === 'advanced' && isWap && (
+        {tab === 'wireless' && (isWap || isGateway) && (
           <>
             <Field label="SSID (Network Name)" value={data.ssid} onChange={(v) => upd({ ssid: v })} />
             <Field label="WPA2 Key" value={data.wpaKey} onChange={(v) => upd({ wpaKey: v })} />
@@ -377,7 +378,7 @@ export default function ConfigPanel({ nodeId, onClose }: Props) {
           </div>
         )}
 
-        {tab === 'security' && isFirewall && (
+        {tab === 'security' && (isFirewall || isGateway) && (
           <div>
             <div className="flex items-center justify-between mb-3">
               <h3 className="text-sm font-semibold text-gray-700">Firewall Rules</h3>

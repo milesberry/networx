@@ -3,7 +3,7 @@ import type { NetNode } from '../types'
 import { useNetworkStore } from '../store'
 import {
   Monitor, Server, Router, Zap, Wifi, Shield, Globe,
-  Laptop, HardDrive, Settings, Terminal as TermIcon, Cloud,
+  Laptop, HardDrive, Settings, Terminal as TermIcon, Cloud, Home,
 } from 'lucide-react'
 
 const DEVICE_CONFIG = {
@@ -15,6 +15,7 @@ const DEVICE_CONFIG = {
   hub:      { icon: Zap,       color: '#6b7280', bg: '#f3f4f6', label: 'Hub' },
   wap:      { icon: Wifi,      color: '#0891b2', bg: '#cffafe', label: 'Access Point' },
   firewall: { icon: Shield,    color: '#9333ea', bg: '#f3e8ff', label: 'Firewall' },
+  gateway:  { icon: Home,      color: '#0f766e', bg: '#ccfbf1', label: 'Home Gateway' },
   dns:      { icon: Globe,     color: '#0284c7', bg: '#e0f2fe', label: 'DNS' },
   web:      { icon: Globe,     color: '#16a34a', bg: '#dcfce7', label: 'Web Server' },
   cloud:    { icon: Cloud,     color: '#0369a1', bg: '#f0f9ff', label: 'Internet' },
@@ -37,6 +38,7 @@ const LAYER_INFO: Record<string, { label: string; color: string; bg: string }> =
   web:      { label: 'L4 Application', color: '#1d4ed8', bg: '#dbeafe' },
   router:   { label: 'L2 Internet',    color: '#dc2626', bg: '#fee2e2' },
   firewall: { label: 'L2–L3',          color: '#dc2626', bg: '#fee2e2' },
+  gateway:  { label: 'L1–L2',          color: '#0f766e', bg: '#ccfbf1' },
   wap:      { label: 'L1 Link',        color: '#d97706', bg: '#fef3c7' },
   switch:   { label: 'L1 Link',        color: '#d97706', bg: '#fef3c7' },
   hub:      { label: 'L1 Link',        color: '#6b7280', bg: '#f3f4f6' },

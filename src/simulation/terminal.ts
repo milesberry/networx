@@ -551,9 +551,9 @@ function cmdSsh(args: string[], ctx: TermContext): Lines {
 function cmdDhclient(_args: string[], ctx: TermContext): Lines {
   const src = self(ctx)
 
-  // Find DHCP-enabled routers reachable from this node
+  // Find DHCP-enabled routers/gateways reachable from this node
   const dhcpRouters = ctx.nodes.filter(
-    (n) => n.data.deviceType === 'router' && n.data.dhcpEnabled,
+    (n) => (n.data.deviceType === 'router' || n.data.deviceType === 'gateway') && n.data.dhcpEnabled,
   )
 
   for (const router of dhcpRouters) {

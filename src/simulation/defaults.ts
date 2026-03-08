@@ -23,6 +23,7 @@ const DEVICE_LABELS: Record<DeviceType, string> = {
   hub: 'Hub',
   wap: 'Access Point',
   firewall: 'Firewall',
+  gateway: 'Home Gateway',
   dns: 'DNS Server',
   web: 'Web Server',
   cloud: 'Internet',
@@ -71,6 +72,22 @@ export function makeDefaultData(type: DeviceType, id: string): NodeData {
       break
     case 'firewall':
       base.ip = nextIp()
+      base.rules = [
+        { id: 'r1', direction: 'in', protocol: 'TCP', srcIp: '*', dstIp: '*', port: '22', action: 'allow' },
+        { id: 'r2', direction: 'in', protocol: 'TCP', srcIp: '*', dstIp: '*', port: '80', action: 'allow' },
+        { id: 'r3', direction: 'in', protocol: 'ANY', srcIp: '*', dstIp: '*', port: '*', action: 'deny' },
+      ]
+      break
+    case 'gateway':
+      base.ip = nextIp()
+      base.routingTable = [
+        { destination: '0.0.0.0', subnet: '0.0.0.0', gateway: '0.0.0.0', iface: 'eth0', metric: 0 },
+      ]
+      base.dhcpEnabled = true
+      base.dhcpPool = '100-200'
+      base.ssid = 'HomeNet-5G'
+      base.wpaKey = 'password123'
+      base.band = '5GHz'
       base.rules = [
         { id: 'r1', direction: 'in', protocol: 'TCP', srcIp: '*', dstIp: '*', port: '22', action: 'allow' },
         { id: 'r2', direction: 'in', protocol: 'TCP', srcIp: '*', dstIp: '*', port: '80', action: 'allow' },

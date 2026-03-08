@@ -1,4 +1,4 @@
-import { Monitor, Server, Router, Zap, Wifi, Shield, Globe, Laptop, HardDrive, Cloud } from 'lucide-react'
+import { Monitor, Server, Router, Zap, Wifi, Shield, Globe, Laptop, HardDrive, Cloud, Home } from 'lucide-react'
 import type { DeviceType, Level } from '../types'
 
 interface DeviceDef {
@@ -20,6 +20,7 @@ const DEVICES: DeviceDef[] = [
   { type: 'switch',   label: 'Switch',       icon: HardDrive, color: '#d97706', bg: '#fef3c7', description: 'Connects LAN devices',       minLevel: 'ks3' },
   { type: 'wap',      label: 'Access Point', icon: Wifi,      color: '#0891b2', bg: '#cffafe', description: 'Wireless access point',      minLevel: 'ks3' },
   { type: 'firewall', label: 'Firewall',     icon: Shield,    color: '#9333ea', bg: '#f3e8ff', description: 'Filters network traffic',    minLevel: 'ks4' },
+  { type: 'gateway',  label: 'Home Gateway', icon: Home,      color: '#0f766e', bg: '#ccfbf1', description: 'Router + switch + Wi-Fi + firewall', minLevel: 'ks4' },
   { type: 'dns',      label: 'DNS Server',   icon: Globe,     color: '#0284c7', bg: '#e0f2fe', description: 'Resolves domain names',      minLevel: 'ks4' },
   { type: 'web',      label: 'Web Server',   icon: Globe,     color: '#16a34a', bg: '#dcfce7', description: 'Serves HTTP pages',          minLevel: 'ks4' },
   { type: 'cloud',    label: 'Internet',     icon: Cloud,     color: '#0369a1', bg: '#f0f9ff', description: 'WAN / ISP cloud',            minLevel: 'ks4' },

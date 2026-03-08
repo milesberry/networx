@@ -11,6 +11,7 @@ export type DeviceType =
   | 'hub'
   | 'wap'
   | 'firewall'
+  | 'gateway'
   | 'dns'
   | 'web'
   | 'cloud'

@@ -139,6 +139,29 @@ Try \`nslookup\` in any terminal node to see DNS queries!`,
 A home router connects your LAN (192.168.x.x) to your ISP's WAN.`,
   },
   {
+    id: 'domestic-gateway',
+    title: 'Domestic Gateway',
+    level: 'Both',
+    tags: ['router', 'gateway', 'home network', 'DHCP', 'NAT', 'Wi-Fi', 'firewall'],
+    summary: 'Home broadband devices combine a router, switch, wireless access point, and basic firewall in a single unit.',
+    body: `A **domestic gateway** (sometimes called a home hub or broadband router) is the single box your ISP provides. It combines four functions that would be separate devices in an enterprise network:
+
+| Function | What it does |
+|---|---|
+| **Router** | Connects your home LAN to the ISP's WAN, routes packets between them |
+| **Switch** | Built-in wired ports (usually 4) so PCs and TVs can connect via Ethernet |
+| **Wireless access point** | Broadcasts a Wi-Fi signal (SSID) so phones and laptops can connect wirelessly |
+| **Firewall** | Blocks unsolicited inbound connections from the internet |
+
+**NAT – Network Address Translation**
+Your ISP gives your home a single public IP address. The gateway uses NAT to allow all your home devices (each with a private 192.168.x.x address) to share that one public IP. When a device makes a request, NAT replaces the private source IP with the public IP on the way out, and reverses the process on the way back.
+
+**DHCP**
+The gateway also runs a DHCP server that automatically assigns IP addresses, subnet masks, and a default gateway to every device that joins the network. Clients request a lease with \`dhclient\` (Linux/Mac) or \`ipconfig /renew\` (Windows).
+
+**In enterprise networks** these functions are kept separate — dedicated routers, managed switches, enterprise access points, and dedicated firewalls — for performance, security, and flexibility. The domestic gateway trades this flexibility for simplicity and low cost.`,
+  },
+  {
     id: 'switch',
     title: 'Switches',
     level: 'Both',
