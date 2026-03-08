@@ -144,7 +144,7 @@ A home router connects your LAN (192.168.x.x) to your ISP's WAN.`,
     level: 'Both',
     tags: ['switch', 'MAC address', 'MAC table', 'VLAN'],
     summary: 'Switches connect devices within a LAN using MAC addresses to forward frames to the correct port.',
-    body: `A **switch** operates at the **Link Layer (Layer 2)** and forwards Ethernet frames based on **MAC addresses**.
+    body: `A **switch** operates at the **Link Layer (Layer 1)** of the TCP/IP model and forwards Ethernet frames based on **MAC addresses**.
 
 **MAC address table (CAM table):**
 - The switch learns MAC addresses by observing which port each frame comes from
@@ -155,7 +155,7 @@ A home router connects your LAN (192.168.x.x) to your ISP's WAN.`,
 **Switch vs Hub:**
 | | Switch | Hub |
 |---|---|---|
-| Layer | 2 (Data Link) | 1 (Physical) |
+| TCP/IP Layer | 1 (Link) | 1 (Link) |
 | Addressing | MAC address | None |
 | Traffic | Unicast (efficient) | Broadcast (all ports) |
 | Collisions | Separate collision domains | Single collision domain |

@@ -30,17 +30,17 @@ const HANDLE_STYLE = {
 }
 
 const LAYER_INFO: Record<string, { label: string; color: string; bg: string }> = {
-  pc:       { label: 'L7 App',      color: '#1d4ed8', bg: '#dbeafe' },
-  laptop:   { label: 'L7 App',      color: '#1d4ed8', bg: '#dbeafe' },
-  server:   { label: 'L7 App',      color: '#1d4ed8', bg: '#dbeafe' },
-  dns:      { label: 'L7 App',      color: '#1d4ed8', bg: '#dbeafe' },
-  web:      { label: 'L7 App',      color: '#1d4ed8', bg: '#dbeafe' },
-  router:   { label: 'L3 Network',  color: '#dc2626', bg: '#fee2e2' },
-  firewall: { label: 'L3–L4',       color: '#dc2626', bg: '#fee2e2' },
-  wap:      { label: 'L2 Data',     color: '#d97706', bg: '#fef3c7' },
-  switch:   { label: 'L2 Data',     color: '#d97706', bg: '#fef3c7' },
-  hub:      { label: 'L1 Physical', color: '#6b7280', bg: '#f3f4f6' },
-  cloud:    { label: 'L3 Internet', color: '#0369a1', bg: '#e0f2fe' },
+  pc:       { label: 'L4 Application', color: '#1d4ed8', bg: '#dbeafe' },
+  laptop:   { label: 'L4 Application', color: '#1d4ed8', bg: '#dbeafe' },
+  server:   { label: 'L4 Application', color: '#1d4ed8', bg: '#dbeafe' },
+  dns:      { label: 'L4 Application', color: '#1d4ed8', bg: '#dbeafe' },
+  web:      { label: 'L4 Application', color: '#1d4ed8', bg: '#dbeafe' },
+  router:   { label: 'L2 Internet',    color: '#dc2626', bg: '#fee2e2' },
+  firewall: { label: 'L2–L3',          color: '#dc2626', bg: '#fee2e2' },
+  wap:      { label: 'L1 Link',        color: '#d97706', bg: '#fef3c7' },
+  switch:   { label: 'L1 Link',        color: '#d97706', bg: '#fef3c7' },
+  hub:      { label: 'L1 Link',        color: '#6b7280', bg: '#f3f4f6' },
+  cloud:    { label: 'L2 Internet',    color: '#0369a1', bg: '#e0f2fe' },
 }
 
 export default function DeviceNode({ id, data, selected }: NodeProps<NetNode>) {
