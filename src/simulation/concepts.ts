@@ -142,12 +142,13 @@ A home router connects your LAN (192.168.x.x) to your ISP's WAN.`,
     id: 'domestic-gateway',
     title: 'Domestic Gateway',
     level: 'Both',
-    tags: ['router', 'gateway', 'home network', 'DHCP', 'NAT', 'Wi-Fi', 'firewall'],
-    summary: 'Home broadband devices combine a router, switch, wireless access point, and basic firewall in a single unit.',
-    body: `A **domestic gateway** (sometimes called a home hub or broadband router) is the single box your ISP provides. It combines four functions that would be separate devices in an enterprise network:
+    tags: ['router', 'gateway', 'home network', 'DHCP', 'NAT', 'Wi-Fi', 'firewall', 'modem'],
+    summary: 'Home broadband devices combine a modem, router, switch, wireless access point, and basic firewall in a single unit.',
+    body: `A **domestic gateway** (sometimes called a home hub or broadband router) is the single box your ISP provides. It combines five functions that would be separate devices in an enterprise network:
 
 | Function | What it does |
 |---|---|
+| **Modem** | Connects to the ISP's physical line (phone line, cable, or fibre) and converts the signal to digital data |
 | **Router** | Connects your home LAN to the ISP's WAN, routes packets between them |
 | **Switch** | Built-in wired ports (usually 4) so PCs and TVs can connect via Ethernet |
 | **Wireless access point** | Broadcasts a Wi-Fi signal (SSID) so phones and laptops can connect wirelessly |
@@ -160,6 +161,25 @@ Your ISP gives your home a single public IP address. The gateway uses NAT to all
 The gateway also runs a DHCP server that automatically assigns IP addresses, subnet masks, and a default gateway to every device that joins the network. Clients request a lease with \`dhclient\` (Linux/Mac) or \`ipconfig /renew\` (Windows).
 
 **In enterprise networks** these functions are kept separate — dedicated routers, managed switches, enterprise access points, and dedicated firewalls — for performance, security, and flexibility. The domestic gateway trades this flexibility for simplicity and low cost.`,
+  },
+  {
+    id: 'modem',
+    title: 'Modems',
+    level: 'Both',
+    tags: ['modem', 'broadband', 'ADSL', 'fibre', 'physical layer'],
+    summary: 'A modem converts digital data from a computer into a signal suitable for transmission over the ISP\'s physical connection, and back again.',
+    body: `**Modem** stands for **Mo**dulator–**Dem**odulator. It converts between the digital signals used inside your network and whatever physical signal the ISP's line carries.
+
+**Types of modem by connection:**
+| Type | Physical medium | Used for |
+|---|---|---|
+| ADSL/VDSL | Copper telephone line | Most UK broadband (BT Openreach) |
+| Cable (DOCSIS) | Coaxial TV cable | Virgin Media |
+| Fibre (ONT) | Optical fibre | Full-fibre (FTTP) broadband |
+
+**In modern home networks** the modem is almost always integrated into the domestic gateway — there is no separate box. You only see a standalone modem in older setups or when the ISP provides just the physical connection and you supply your own router.
+
+**In the TCP/IP model** the modem sits below the Link Layer, handling the physical medium — it is concerned with signals, not packets or frames.`,
   },
   {
     id: 'switch',
