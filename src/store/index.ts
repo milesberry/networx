@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import { addEdge, applyNodeChanges, applyEdgeChanges } from '@xyflow/react'
 import type { NodeChange, EdgeChange, Connection } from '@xyflow/react'
-import type { NetNode, NetEdge, NodeData, PanelType, RouteEntry, MacEntry, FirewallRule, DnsRecord, TerminalLine, PacketAnim, Level } from '../types'
+import type { NetNode, NetEdge, NodeData, PanelType, RouteEntry, MacEntry, ArpEntry, FirewallRule, DnsRecord, TerminalLine, PacketAnim, Level } from '../types'
 import { makeDefaultData } from '../simulation/defaults'
 import type { Preset } from '../simulation/presets'
 
@@ -57,6 +57,8 @@ interface NetworkStore {
 
   // Switch MAC learning
   learnMac: (nodeId: string, entry: MacEntry) => void
+  // Host/router ARP learning
+  learnArp: (nodeId: string, entry: ArpEntry) => void
 
   // Routing table
   addRoute: (nodeId: string, route: RouteEntry) => void
@@ -181,6 +183,24 @@ export const useNetworkStore = create<NetworkStore>((set, get) => ({
       nodes: s.nodes.map((n) =>
         n.id === nodeId
           ? { ...n, data: { ...n.data, macTable: [...n.data.macTable.filter((m) => m.mac !== entry.mac), entry] } }
+          : n,
+      ),
+    })),
+
+  learnArp: (nodeId, entry) =>
+    set((s) => ({
+      nodes: s.nodes.map((n) =>
+        n.id === nodeId
+          ? {
+              ...n,
+              data: {
+                ...n.data,
+                arpTable: [
+                  ...(n.data.arpTable ?? []).filter((a) => a.ip !== entry.ip),
+                  entry,
+                ],
+              },
+            }
           : n,
       ),
     })),

@@ -5,6 +5,7 @@ import { useNetworkStore } from '../store'
 import type { PacketAnim } from '../types'
 
 const PROTOCOL_COLORS: Record<string, string> = {
+  ARP:  '#16a34a',  // green
   ICMP: '#f97316',  // orange
   HTTP: '#2563eb',  // blue
   DNS:  '#9333ea',  // purple

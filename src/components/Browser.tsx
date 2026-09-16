@@ -2,7 +2,7 @@ import { useState, useCallback, useRef } from 'react'
 import { ArrowLeft, ArrowRight, RotateCw, Globe, X } from 'lucide-react'
 import { useNetworkStore } from '../store'
 import { findPath } from '../simulation/network'
-import { makePackets, PUBLIC_IPS } from '../simulation/terminal'
+import { makePacketsWithArp, PUBLIC_IPS } from '../simulation/terminal'
 
 interface Props {
   nodeId: string
@@ -23,7 +23,7 @@ function extractHostname(url: string): string {
 }
 
 export default function Browser({ nodeId }: Props) {
-  const { nodes, edges, dispatchPackets } = useNetworkStore()
+  const { nodes, edges, learnMac, learnArp, dispatchPackets } = useNetworkStore()
   const [addressInput, setAddressInput] = useState('')
   const [page, setPage] = useState<LoadedPage | null>(null)
   const [history, setHistory] = useState<LoadedPage[]>([])
@@ -55,11 +55,15 @@ export default function Browser({ nodeId }: Props) {
         )
         if (record) {
           // Animate DNS lookup
-          dispatchPackets(makePackets(dnsPath, edges, 'DNS', 'DNS', true))
+          dispatchPackets(makePacketsWithArp(src, dnsNode, dnsPath, {
+            selfId: src.id, nodes, edges, learnMac, learnArp,
+          }, 'DNS', 'DNS', true))
           targetIp = record.ip
         } else if (PUBLIC_IPS[hostname]) {
           // Known external hostname
-          dispatchPackets(makePackets(dnsPath, edges, 'DNS', 'DNS', true))
+          dispatchPackets(makePacketsWithArp(src, dnsNode, dnsPath, {
+            selfId: src.id, nodes, edges, learnMac, learnArp,
+          }, 'DNS', 'DNS', true))
           targetIp = PUBLIC_IPS[hostname]
         } else {
           setError(`This site can't be reached\n\n${hostname} could not be resolved.\n\nCheck the DNS server's A records.`)
@@ -84,7 +88,9 @@ export default function Browser({ nodeId }: Props) {
         return
       }
       // Animate HTTP request
-      dispatchPackets(makePackets(path, edges, 'HTTP', 'HTTP', true))
+      dispatchPackets(makePacketsWithArp(src, webNode, path, {
+        selfId: src.id, nodes, edges, learnMac, learnArp,
+      }, 'HTTP', 'HTTP', true))
 
       const content = webNode.data.pageContent?.trim() || '<html><body><h1>Empty Page</h1></body></html>'
       const titleMatch = content.match(/<title[^>]*>([^<]*)<\/title>/i)
@@ -108,7 +114,9 @@ export default function Browser({ nodeId }: Props) {
 
     if (cloudPath) {
       // Simulate external page
-      dispatchPackets(makePackets(cloudPath, edges, 'HTTP', 'HTTP', true))
+      dispatchPackets(makePacketsWithArp(src, cloudNode!, cloudPath, {
+        selfId: src.id, nodes, edges, learnMac, learnArp,
+      }, 'HTTP', 'HTTP', true))
       const content = `<!DOCTYPE html>
 <html>
 <head><title>${hostname}</title></head>
@@ -132,7 +140,7 @@ export default function Browser({ nodeId }: Props) {
     }
 
     setError(`This site can't be reached\n\n${hostname} (${targetIp}) — no web server found at this address and no internet connection available.`)
-  }, [nodeId, nodes, edges, dispatchPackets, history, historyIndex])
+  }, [nodeId, nodes, edges, learnMac, learnArp, dispatchPackets, history, historyIndex])
 
   function goBack() {
     if (historyIndex <= 0) return

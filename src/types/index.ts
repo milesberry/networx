@@ -30,6 +30,12 @@ export interface MacEntry {
   vlan: number
 }
 
+export interface ArpEntry {
+  ip: string
+  mac: string
+  iface: string
+}
+
 export interface DnsRecord {
   id: string
   hostname: string
@@ -67,6 +73,8 @@ export interface NodeData extends Record<string, unknown> {
   dhcpPool: string  // last-octet range, e.g. "100-200"
   // Switch
   macTable: MacEntry[]
+  // Host/router ARP cache
+  arpTable: ArpEntry[]
   // WAP
   ssid: string
   wpaKey: string
@@ -91,7 +99,7 @@ export type PanelType = 'config' | 'terminal' | 'browser' | 'info' | null
 export interface PacketAnim {
   id: string
   edgeId: string
-  protocol: 'ICMP' | 'HTTP' | 'DNS' | 'TCP' | 'UDP'
+  protocol: 'ARP' | 'ICMP' | 'HTTP' | 'DNS' | 'TCP' | 'UDP'
   label: string
   delayMs: number
   durationMs: number

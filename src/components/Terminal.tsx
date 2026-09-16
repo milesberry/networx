@@ -10,7 +10,7 @@ interface Props {
 }
 
 export default function Terminal({ nodeId, onClose }: Props) {
-  const { nodes, edges, appendTermLine, clearTerm, learnMac, dispatchPackets, updateNodeData, level } = useNetworkStore()
+  const { nodes, edges, appendTermLine, clearTerm, learnMac, learnArp, dispatchPackets, updateNodeData, level } = useNetworkStore()
   const node = nodes.find((n) => n.id === nodeId)
   const [input, setInput] = useState('')
   const [histIdx, setHistIdx] = useState(-1)
@@ -58,7 +58,7 @@ export default function Terminal({ nodeId, onClose }: Props) {
 
     const result = runCommand(raw, {
       selfId: sshNodeId ?? nodeId,
-      nodes, edges, level, learnMac, dispatchPackets, updateNodeData,
+      nodes, edges, level, learnMac, learnArp, dispatchPackets, updateNodeData,
     })
 
     // Handle CLEAR signal
@@ -79,7 +79,7 @@ export default function Terminal({ nodeId, onClose }: Props) {
     setCmdHistory((h) => [raw, ...h].slice(0, 50))
     setHistIdx(-1)
     setInput('')
-  }, [input, nodeId, nodes, edges, appendTermLine, clearTerm, learnMac, dispatchPackets, updateNodeData, level, sshNodeId, sshNode])
+  }, [input, nodeId, nodes, edges, appendTermLine, clearTerm, learnMac, learnArp, dispatchPackets, updateNodeData, level, sshNodeId, sshNode])
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (e.key === 'Enter') { submit(); return }

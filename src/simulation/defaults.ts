@@ -43,6 +43,7 @@ export function makeDefaultData(type: DeviceType, id: string): NodeData {
     dhcpEnabled: false,
     dhcpPool: '100-200',
     macTable: [],
+    arpTable: [],
     ssid: 'NetworX-WiFi',
     wpaKey: 'password123',
     band: '2.4GHz',

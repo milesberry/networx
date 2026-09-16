@@ -1,5 +1,5 @@
-import type { NetNode, NetEdge, TerminalLine, MacEntry, PacketAnim, Level, NodeData } from '../types'
-import { findPath, nodeByIp, nodeById, simulatePingRtt, subnetToCidr } from './network'
+import type { NetNode, NetEdge, TerminalLine, MacEntry, ArpEntry, PacketAnim, Level, NodeData } from '../types'
+import { findPath, nodeByIp, nodeById, sameSubnet, simulatePingRtt, subnetToCidr } from './network'
 
 export interface TermContext {
   selfId: string
@@ -7,6 +7,7 @@ export interface TermContext {
   edges: NetEdge[]
   level?: Level
   learnMac?: (switchId: string, entry: MacEntry) => void
+  learnArp?: (nodeId: string, entry: ArpEntry) => void
   dispatchPackets?: (packets: PacketAnim[]) => void
   updateNodeData?: (id: string, patch: Partial<NodeData>) => void
 }
@@ -14,14 +15,22 @@ export interface TermContext {
 // ── Packet animation helpers ──────────────────────────────────────────────────
 
 const HOP_MS = 500
+let packetSequence = 0
 
 export function edgesOnPath(nodeIds: string[], edges: NetEdge[]): string[] {
+  return segmentsOnPath(nodeIds, edges).map(({ edgeId }) => edgeId)
+}
+
+function segmentsOnPath(
+  nodeIds: string[],
+  edges: NetEdge[],
+): Array<{ edgeId: string; reverse: boolean }> {
   return nodeIds.slice(0, -1).flatMap((nid, i) => {
     const next = nodeIds[i + 1]
     const e = edges.find(
       (e) => (e.source === nid && e.target === next) || (e.source === next && e.target === nid),
     )
-    return e ? [e.id] : []
+    return e ? [{ edgeId: e.id, reverse: e.source !== nid }] : []
   })
 }
 
@@ -32,24 +41,25 @@ export function makePackets(
   label: string,
   withReply = false,
 ): PacketAnim[] {
-  const eids = edgesOnPath(nodeIds, allEdges)
-  const N = eids.length
-  const ts = Date.now()
-  const forward: PacketAnim[] = eids.map((edgeId, i) => ({
-    id: `pkt-${ts}-f${i}`,
+  const segments = segmentsOnPath(nodeIds, allEdges)
+  const N = segments.length
+  const batchId = `${Date.now()}-${++packetSequence}`
+  const forward: PacketAnim[] = segments.map(({ edgeId, reverse }, i) => ({
+    id: `pkt-${batchId}-f${i}`,
     edgeId, protocol, label,
     delayMs: i * HOP_MS,
     durationMs: HOP_MS,
+    reverse,
   }))
   if (!withReply) return forward
-  const replyLabel = protocol === 'ICMP' ? 'reply' : `${label} ↩`
-  const reply: PacketAnim[] = [...eids].reverse().map((edgeId, i) => ({
-    id: `pkt-${ts}-r${i}`,
+  const replyLabel = protocol === 'ICMP' || protocol === 'ARP' ? 'reply' : `${label} ↩`
+  const reply: PacketAnim[] = [...segments].reverse().map(({ edgeId, reverse }, i) => ({
+    id: `pkt-${batchId}-r${i}`,
     edgeId, protocol,
     label: replyLabel,
     delayMs: (N + i) * HOP_MS,
     durationMs: HOP_MS,
-    reverse: true,
+    reverse: !reverse,
   }))
   return [...forward, ...reply]
 }
@@ -88,6 +98,67 @@ function populateMacTables(path: string[], ctx: TermContext): void {
       }
     }
   }
+}
+
+function populateArpTables(src: NetNode, dst: NetNode, ctx: TermContext): void {
+  if (!ctx.learnArp || !src.data.ip || !dst.data.ip || !src.data.subnet) return
+
+  if (sameSubnet(src.data.ip, dst.data.ip, src.data.subnet)) {
+    ctx.learnArp(src.id, { ip: dst.data.ip, mac: dst.data.mac, iface: 'eth0' })
+    if (dst.data.subnet && sameSubnet(dst.data.ip, src.data.ip, dst.data.subnet)) {
+      ctx.learnArp(dst.id, { ip: src.data.ip, mac: src.data.mac, iface: 'eth0' })
+    }
+    return
+  }
+
+  const gateway = nodeByIp(src.data.gateway, ctx.nodes)
+  if (gateway?.data.mac) {
+    ctx.learnArp(src.id, { ip: gateway.data.ip, mac: gateway.data.mac, iface: 'eth0' })
+    ctx.learnArp(gateway.id, { ip: src.data.ip, mac: src.data.mac, iface: 'eth0' })
+  }
+}
+
+export function makePacketsWithArp(
+  src: NetNode,
+  dst: NetNode,
+  path: string[],
+  ctx: TermContext,
+  protocol: PacketAnim['protocol'],
+  label: string,
+  withReply = false,
+): PacketAnim[] {
+  populateMacTables(path, ctx)
+
+  let arpTarget: NetNode | undefined
+  let arpPath: string[] | null = null
+  if (src.data.ip && dst.data.ip && src.data.subnet && sameSubnet(src.data.ip, dst.data.ip, src.data.subnet)) {
+    arpTarget = dst
+    arpPath = path
+  } else if (src.data.gateway) {
+    arpTarget = nodeByIp(src.data.gateway, ctx.nodes)
+    arpPath = arpTarget ? findPath(src.id, arpTarget.id, ctx.nodes, ctx.edges) : null
+  }
+
+  const hasEntry = arpTarget
+    ? (src.data.arpTable ?? []).some(
+        (entry) => entry.ip === arpTarget!.data.ip && entry.mac === arpTarget!.data.mac,
+      )
+    : true
+
+  let arpPackets: PacketAnim[] = []
+  if (arpTarget && arpPath && !hasEntry) {
+    populateArpTables(src, dst, ctx)
+    arpPackets = makePackets(arpPath, ctx.edges, 'ARP', 'request', true)
+  }
+
+  const dataPackets = makePackets(path, ctx.edges, protocol, label, withReply)
+  if (arpPackets.length === 0) return dataPackets
+
+  const arpDelay = (arpPath!.length - 1) * HOP_MS * 2
+  return [
+    ...arpPackets,
+    ...dataPackets.map((packet) => ({ ...packet, delayMs: packet.delayMs + arpDelay })),
+  ]
 }
 
 type Lines = TerminalLine[]
@@ -186,8 +257,12 @@ function cmdPing(args: string[], ctx: TermContext): Lines {
     // Animate DNS lookup then ICMP packets to the internet
     const dnsNode = ctx.nodes.find((n) => n.data.deviceType === 'dns')
     const dnsPath = dnsNode ? findPath(src.id, dnsNode.id, ctx.nodes, ctx.edges) : null
-    if (dnsPath) ctx.dispatchPackets?.(makePackets(dnsPath, ctx.edges, 'DNS', 'DNS', true))
-    if (cloudPath) ctx.dispatchPackets?.(makePackets(cloudPath, ctx.edges, 'ICMP', 'ICMP', true))
+    if (dnsPath && dnsNode) {
+      ctx.dispatchPackets?.(makePacketsWithArp(src, dnsNode, dnsPath, ctx, 'DNS', 'DNS', true))
+    }
+    if (cloudPath && cloudNode) {
+      ctx.dispatchPackets?.(makePacketsWithArp(src, cloudNode, cloudPath, ctx, 'ICMP', 'ICMP', true))
+    }
 
     const hops = (cloudPath?.length ?? 3) - 1
     const baseRtt = 20 + hops * 8
@@ -216,8 +291,7 @@ function cmdPing(args: string[], ctx: TermContext): Lines {
   const path = findPath(src.id, dst.id, ctx.nodes, ctx.edges)
   if (!path) return [err(`ping: sendmsg: No route to host`)]
 
-  populateMacTables(path, ctx)
-  ctx.dispatchPackets?.(makePackets(path, ctx.edges, 'ICMP', 'ICMP', true))
+  ctx.dispatchPackets?.(makePacketsWithArp(src, dst, path, ctx, 'ICMP', 'ICMP', true))
 
   const hops = path.length - 1
   const lines: Lines = [out(`PING ${target}: 56 data bytes`)]
@@ -252,8 +326,12 @@ function cmdTraceroute(args: string[], ctx: TermContext): Lines {
     // Animate DNS lookup then ICMP probe packets towards the internet
     const dnsNode = ctx.nodes.find((n) => n.data.deviceType === 'dns')
     const dnsPath = dnsNode ? findPath(src.id, dnsNode.id, ctx.nodes, ctx.edges) : null
-    if (dnsPath) ctx.dispatchPackets?.(makePackets(dnsPath, ctx.edges, 'DNS', 'DNS', true))
-    if (cloudPath) ctx.dispatchPackets?.(makePackets(cloudPath, ctx.edges, 'ICMP', 'ICMP'))
+    if (dnsPath && dnsNode) {
+      ctx.dispatchPackets?.(makePacketsWithArp(src, dnsNode, dnsPath, ctx, 'DNS', 'DNS', true))
+    }
+    if (cloudPath && cloudNode) {
+      ctx.dispatchPackets?.(makePacketsWithArp(src, cloudNode, cloudPath, ctx, 'ICMP', 'ICMP'))
+    }
 
     const lines: Lines = [
       info(`Resolving ${target} via DNS (${resolved.dnsIp})…`),
@@ -296,8 +374,7 @@ function cmdTraceroute(args: string[], ctx: TermContext): Lines {
   const path = findPath(src.id, dst.id, ctx.nodes, ctx.edges)
   if (!path) return [err(`traceroute to ${target}: no route to host`)]
 
-  populateMacTables(path, ctx)
-  ctx.dispatchPackets?.(makePackets(path, ctx.edges, 'ICMP', 'ICMP'))
+  ctx.dispatchPackets?.(makePacketsWithArp(src, dst, path, ctx, 'ICMP', 'ICMP'))
 
   const WAN_SIDE_TYPES = ['router', 'gateway', 'cloud', 'firewall']
   const lines: Lines = [out(`traceroute to ${target} (${target}), 30 hops max, 60 byte packets`)]
@@ -379,7 +456,9 @@ function cmdNslookup(args: string[], ctx: TermContext): Lines {
   const canReachDns   = !!dnsPath
   const canReachCloud = !!(cloudNode && findPath(src.id, cloudNode.id, ctx.nodes, ctx.edges))
 
-  if (dnsPath) ctx.dispatchPackets?.(makePackets(dnsPath, ctx.edges, 'DNS', 'DNS', true))
+  if (dnsPath && dnsNode) {
+    ctx.dispatchPackets?.(makePacketsWithArp(src, dnsNode, dnsPath, ctx, 'DNS', 'DNS', true))
+  }
 
   if (!canReachDns && !canReachCloud) {
     return [
@@ -424,18 +503,27 @@ function cmdNslookup(args: string[], ctx: TermContext): Lines {
   return lines
 }
 
-function cmdArp(_args: string[], ctx: TermContext): Lines {
+function cmdArp(args: string[], ctx: TermContext): Lines {
   const node = self(ctx)
-  const neighbourIds = ctx.edges
-    .filter((e) => e.source === node.id || e.target === node.id)
-    .map((e) => (e.source === node.id ? e.target : e.source))
+  if (args[0] === '-d') {
+    const ip = args[1]
+    const entries = node.data.arpTable ?? []
+    if (!ip || ip === '*') {
+      ctx.updateNodeData?.(node.id, { arpTable: [] })
+      return [info('ARP cache cleared.')]
+    }
+    if (!entries.some((entry) => entry.ip === ip)) {
+      return [err(`arp: ${ip}: no matching entry`)]
+    }
+    ctx.updateNodeData?.(node.id, {
+      arpTable: entries.filter((entry) => entry.ip !== ip),
+    })
+    return [info(`Deleted ARP entry for ${ip}.`)]
+  }
 
   const lines: Lines = [out('Address         HWtype  HWaddress           Flags Iface')]
-  for (const nid of neighbourIds) {
-    const n = nodeById(nid, ctx.nodes)
-    if (n?.data.ip) {
-      lines.push(out(`${n.data.ip.padEnd(16)}ether   ${n.data.mac}  C     eth0`))
-    }
+  for (const entry of node.data.arpTable ?? []) {
+    lines.push(out(`${entry.ip.padEnd(16)}ether   ${entry.mac}  C     ${entry.iface}`))
   }
   if (lines.length === 1) lines.push(out('(no entries)'))
   return lines
@@ -486,7 +574,7 @@ function cmdCurl(args: string[], ctx: TermContext): Lines {
 
   // If hostname is an IP address and matches a reachable local web server, serve it
   if (!isHostname(hostname) && localPath && webNode?.data.ip === hostname) {
-    ctx.dispatchPackets?.(makePackets(localPath, ctx.edges, 'HTTP', 'HTTP', true))
+    ctx.dispatchPackets?.(makePacketsWithArp(src, webNode, localPath, ctx, 'HTTP', 'HTTP', true))
     return renderPage(webNode)
   }
 
@@ -506,9 +594,11 @@ function cmdCurl(args: string[], ctx: TermContext): Lines {
         (n) => n.data.deviceType === 'web' && n.data.ip === localRecord.ip,
       )
       const targetPath = targetWeb ? findPath(src.id, targetWeb.id, ctx.nodes, ctx.edges) : null
-      if (dnsPath) ctx.dispatchPackets?.(makePackets(dnsPath, ctx.edges, 'DNS', 'DNS', false))
-      if (targetPath) {
-        ctx.dispatchPackets?.(makePackets(targetPath, ctx.edges, 'HTTP', 'HTTP', true))
+      if (dnsPath && dnsNode) {
+        ctx.dispatchPackets?.(makePacketsWithArp(src, dnsNode, dnsPath, ctx, 'DNS', 'DNS', false))
+      }
+      if (targetPath && targetWeb) {
+        ctx.dispatchPackets?.(makePacketsWithArp(src, targetWeb, targetPath, ctx, 'HTTP', 'HTTP', true))
         return renderPage(targetWeb)
       }
       return [err(`curl: (7) Failed to connect to ${hostname} (${localRecord.ip}): No route to host`)]
@@ -525,9 +615,13 @@ function cmdCurl(args: string[], ctx: TermContext): Lines {
 
   // If local web server exists and is reachable, use it for any reachable host (fallback)
   if (localPath && !isHostname(hostname)) {
-    ctx.dispatchPackets?.(makePackets(localPath, ctx.edges, 'HTTP', 'HTTP', true))
+    ctx.dispatchPackets?.(makePacketsWithArp(src, webNode!, localPath, ctx, 'HTTP', 'HTTP', true))
     return renderPage(webNode)
   }
+
+  ctx.dispatchPackets?.(
+    makePacketsWithArp(src, cloudNode!, canReachInternet, ctx, 'HTTP', 'HTTP', true),
+  )
 
   return [
     out(`  % Total    % Received % Xferd  Average Speed   Time`),
@@ -567,9 +661,10 @@ function cmdSsh(args: string[], ctx: TermContext): Lines {
   if (!['pc', 'laptop', 'server', 'web', 'dns', 'router', 'gateway'].includes(dst.data.deviceType)) {
     return [err(`ssh: connect to host ${target}: Connection refused`)]
   }
-  const path = findPath(self(ctx).id, dst.id, ctx.nodes, ctx.edges)
+  const src = self(ctx)
+  const path = findPath(src.id, dst.id, ctx.nodes, ctx.edges)
   if (!path) return [err(`ssh: connect to host ${target}: Network unreachable`)]
-  ctx.dispatchPackets?.(makePackets(path, ctx.edges, 'TCP', 'SSH'))
+  ctx.dispatchPackets?.(makePacketsWithArp(src, dst, path, ctx, 'TCP', 'SSH'))
   return [
     out(`Connecting to ${target} (${dst.data.label})...`),
     out(`The authenticity of host '${target}' can't be established.`),
@@ -675,6 +770,7 @@ function cmdHelp(ctx: TermContext): Lines {
       out('  traceroute <ip|host>– Trace network path (hostname ok)'),
       out('  nslookup <domain>  – Query DNS for a domain name'),
       out('  arp -a             – Show ARP table (neighbours)'),
+      out('  arp -d [ip|*]      – Delete one or all ARP entries'),
       out('  netstat            – Show active connections'),
       out('  route              – Show routing table'),
       out('  curl <url>         – Make HTTP request'),
